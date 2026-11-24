@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Contrast Lab share card</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@500;600&family=Work+Sans:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* 1200x630 share card. Every number on it is real output from the app (#777777 and
+         #767676 on white). */
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        background: #000052;
+        color: #fff;
+        font-family: "Work Sans", sans-serif;
+        display: grid;
+        grid-template-columns: 520px 1fr;
+        gap: 56px;
+        padding: 72px 72px 64px;
+      }
+      .by {
+        font-family: "Source Code Pro", monospace;
+        font-weight: 600;
+        font-size: 22px;
+        color: #ffdf3f;
+        margin: 0 0 28px;
+      }
+      h1 {
+        font-size: 76px;
+        line-height: 1;
+        margin: 0 0 22px;
+        letter-spacing: -0.03em;
+      }
+      .tag {
+        font-size: 28px;
+        line-height: 1.3;
+        margin: 0 0 30px;
+        color: #e8e8ff;
+      }
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 12px;
+        font-size: 22px;
+      }
+      li::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ffdf3f;
+        margin-right: 14px;
+        vertical-align: middle;
+      }
+      .cards {
+        display: grid;
+        gap: 22px;
+        align-content: center;
+      }
+      .card {
+        background: #fff;
+        color: #000052;
+        border-radius: 18px;
+        padding: 24px 28px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px 20px;
+        align-items: center;
+      }
+      .sample {
+        grid-row: span 2;
+      }
+      .sample p {
+        margin: 0;
+        font-weight: 700;
+        font-size: 34px;
+      }
+      .sample .hex {
+        font-family: "Source Code Pro", monospace;
+        font-size: 20px;
+        color: #4a4a6a;
+        margin-top: 6px !important;
+        font-weight: 600 !important;
+      }
+      .ratio {
+        font-size: 52px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        text-align: right;
+      }
+      .ratio small {
+        font-size: 24px;
+      }
+      .badge {
+        justify-self: end;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 700;
+        font-size: 18px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 6px 14px;
+        border-radius: 999px;
+      }
+      .fail .badge {
+        color: #a4161a;
+        border: 2px solid #a4161a;
+      }
+      .pass .badge {
+        background: #000052;
+        color: #fff;
+      }
+      .badge svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .arrow {
+        font-family: "Source Code Pro", monospace;
+        font-size: 20px;
+        color: #ffdf3f;
+        font-weight: 600;
+        padding-left: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <p class="by">jayfox.design/lab</p>
+      <h1>Contrast Lab</h1>
+      <p class="tag">Not just a fail: the nearest colors that pass.</p>
+      <ul>
+        <li>WCAG 2.2 checks, with the math</li>
+        <li>Nearest passing color, same hue</li>
+        <li>Every pair in a palette at once</li>
+      </ul>
+    </div>
+    <div class="cards">
+      <div class="card fail">
+        <div class="sample">
+          <p style="color: #777777">Body text</p>
+          <p class="hex">#777777 on #ffffff</p>
+        </div>
+        <div class="ratio">4.47<small> :1</small></div>
+        <span class="badge"
+          ><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>Fail</span
+        >
+      </div>
+      <p class="arrow">↓ nearest pass, barely visible change</p>
+      <div class="card pass">
+        <div class="sample">
+          <p style="color: #767676">Body text</p>
+          <p class="hex">#767676 on #ffffff</p>
+        </div>
+        <div class="ratio">4.54<small> :1</small></div>
+        <span class="badge"
+          ><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>Pass</span
+        >
+      </div>
+    </div>
+  </body>
+</html>
