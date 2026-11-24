@@ -1,6 +1,6 @@
 # Contrast Lab
 
-![Contrast Lab: #777777 on white fails body text at 4.47:1; the nearest pass, #767676, reaches 4.54:1](public/og-image.png)
+![Contrast Lab: a coral text color on white, with the nearest passing shade previewed at 4.51:1 and the fixes panel beside it](public/og-image.png)
 
 Check a text color and a background against the WCAG 2.2 contrast rules, see the math, and get
 the **nearest colors that pass** instead of just a fail. Or check a whole palette at once and

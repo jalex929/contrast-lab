@@ -8,8 +8,8 @@
       rel="stylesheet"
     />
     <style>
-      /* 1200x630 share card. Every number on it is real output from the app (#777777 and
-         #767676 on white). */
+      /* 1200x630 share card. The right side is a real screenshot of the app (app.png, made by
+         scripts/share-image.mjs), so the card always shows the actual interface. */
       * {
         box-sizing: border-box;
       }
@@ -17,161 +17,85 @@
         margin: 0;
         width: 1200px;
         height: 630px;
-        background: #000052;
-        color: #fff;
+        overflow: hidden;
+        background: #f4f4f5;
+        color: #18181b;
         font-family: "Work Sans", sans-serif;
         display: grid;
-        grid-template-columns: 520px 1fr;
-        gap: 56px;
-        padding: 72px 72px 64px;
+        grid-template-columns: 400px 1fr;
+      }
+      .text {
+        padding: 56px 28px 56px 56px;
+        display: grid;
+        align-content: center;
+        gap: 22px;
       }
       .by {
+        margin: 0;
         font-family: "Source Code Pro", monospace;
         font-weight: 600;
-        font-size: 22px;
-        color: #ffdf3f;
-        margin: 0 0 28px;
+        font-size: 20px;
+        color: #52525b;
       }
       h1 {
-        font-size: 76px;
+        margin: 0;
+        font-size: 64px;
         line-height: 1;
-        margin: 0 0 22px;
         letter-spacing: -0.03em;
       }
       .tag {
-        font-size: 28px;
+        margin: 0;
+        font-size: 26px;
         line-height: 1.3;
-        margin: 0 0 30px;
-        color: #e8e8ff;
+        color: #3f3f46;
       }
       ul {
         margin: 0;
         padding: 0;
         list-style: none;
         display: grid;
+        gap: 10px;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      li {
+        display: flex;
         gap: 12px;
-        font-size: 22px;
+        align-items: center;
       }
       li::before {
         content: "";
-        display: inline-block;
-        width: 10px;
-        height: 10px;
+        width: 9px;
+        height: 9px;
         border-radius: 50%;
-        background: #ffdf3f;
-        margin-right: 14px;
-        vertical-align: middle;
+        background: #18181b;
+        flex: none;
       }
-      .cards {
-        display: grid;
-        gap: 22px;
-        align-content: center;
+      .shot {
+        position: relative;
+        overflow: hidden;
       }
-      .card {
-        background: #fff;
-        color: #000052;
-        border-radius: 18px;
-        padding: 24px 28px;
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 6px 20px;
-        align-items: center;
-      }
-      .sample {
-        grid-row: span 2;
-      }
-      .sample p {
-        margin: 0;
-        font-weight: 700;
-        font-size: 34px;
-      }
-      .sample .hex {
-        font-family: "Source Code Pro", monospace;
-        font-size: 20px;
-        color: #4a4a6a;
-        margin-top: 6px !important;
-        font-weight: 600 !important;
-      }
-      .ratio {
-        font-size: 52px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        text-align: right;
-      }
-      .ratio small {
-        font-size: 24px;
-      }
-      .badge {
-        justify-self: end;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-weight: 700;
-        font-size: 18px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        padding: 6px 14px;
-        border-radius: 999px;
-      }
-      .fail .badge {
-        color: #a4161a;
-        border: 2px solid #a4161a;
-      }
-      .pass .badge {
-        background: #000052;
-        color: #fff;
-      }
-      .badge svg {
-        width: 18px;
-        height: 18px;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 3;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
-      .arrow {
-        font-family: "Source Code Pro", monospace;
-        font-size: 20px;
-        color: #ffdf3f;
-        font-weight: 600;
-        padding-left: 6px;
+      .shot img {
+        position: absolute;
+        top: 48px;
+        left: 0;
+        width: 840px;
+        border-radius: 16px 0 0 16px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
       }
     </style>
   </head>
   <body>
-    <div>
+    <div class="text">
       <p class="by">jayfox.design/lab</p>
       <h1>Contrast Lab</h1>
       <p class="tag">Not just a fail: the nearest colors that pass.</p>
       <ul>
         <li>WCAG 2.2 checks, with the math</li>
-        <li>Nearest passing color, same hue</li>
-        <li>Every pair in a palette at once</li>
+        <li>Box text or an icon in a screenshot</li>
+        <li>Check a whole palette at once</li>
       </ul>
     </div>
-    <div class="cards">
-      <div class="card fail">
-        <div class="sample">
-          <p style="color: #777777">Body text</p>
-          <p class="hex">#777777 on #ffffff</p>
-        </div>
-        <div class="ratio">4.47<small> :1</small></div>
-        <span class="badge"
-          ><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>Fail</span
-        >
-      </div>
-      <p class="arrow">↓ nearest pass, barely visible change</p>
-      <div class="card pass">
-        <div class="sample">
-          <p style="color: #767676">Body text</p>
-          <p class="hex">#767676 on #ffffff</p>
-        </div>
-        <div class="ratio">4.54<small> :1</small></div>
-        <span class="badge"
-          ><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>Pass</span
-        >
-      </div>
-    </div>
+    <div class="shot"><img src="app.png" alt="" /></div>
   </body>
 </html>
