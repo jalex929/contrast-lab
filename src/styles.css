@@ -366,8 +366,8 @@ h1 {
 
 .check {
   display: grid;
-  grid-template-columns: 84px 1fr auto;
-  gap: 12px;
+  grid-template-columns: 84px 1fr;
+  gap: 2px 12px;
   align-items: center;
   padding: 10px 12px;
   border-radius: var(--radius);
@@ -418,10 +418,14 @@ h1 {
 }
 
 .check__rule {
+  grid-column: 2;
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--muted);
-  text-align: right;
+}
+
+.check__badge {
+  grid-row: span 2;
 }
 
 .math {
@@ -857,11 +861,6 @@ h1 {
 
   .check {
     grid-template-columns: 76px 1fr;
-  }
-
-  .check__rule {
-    grid-column: 2;
-    text-align: left;
   }
 
   .preview__card {
