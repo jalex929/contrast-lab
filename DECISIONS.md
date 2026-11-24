@@ -23,6 +23,13 @@ designers actually need.
 **Its own public repo** (Jay's call): like every Lab project, built in its own repo and
 published under jayfox.design/lab.
 
+**One tool for what used to take three** (Jay, 2026-11-24). Before this, Jay used three apps
+to do the job: an image color picker (imagecolorpicker.com) to get the values out of a design,
+the WebAIM contrast checker to test a pair, and the Coolors palette contrast checker to test a
+whole palette. Getting colors from a Figma screenshot into the palette checker had to be done by
+hand, which was tedious. Contrast Lab does all three in one place: pick or box colors in a
+screenshot, check a pair with the nearest fix, and fill a palette straight from a screenshot.
+
 ## Product decisions
 
 **Two modes: a pair and a palette** (build default). The original plan asked for ratios,
@@ -208,6 +215,38 @@ column, "Nearest passing colors" moves directly under the preview and its pass/f
 failing result and its fix sit together and Use changes the preview just above. It moves in the
 page order itself (not only visually), so keyboard and screen-reader order match what's seen.
 Wide screens keep it in the sidebar beside the preview.
+
+## Fifth pass: a clearer answer and a stronger fix (2026-11-24)
+
+A review of eight states on desktop and phone (Jay approved all eight changes):
+
+- **The result line is neutral.** The ratio used to be drawn in the tested colors, so for a
+  faint pair (light grey on white, the pair that most needs checking) the key number was nearly
+  invisible. It now sits above the preview in the interface's own ink, with one verdict for the
+  chosen rule ("Fails body text (AA) · Needs 4.5:1") and the "Aim for" control beside it. The
+  preview keeps the sample type, buttons and icon.
+- **Checks in two rows,** AA and AAA, instead of a sentence plus five mixed chips.
+- **One best fix first.** The smallest change is shown large with "Use this fix"; the rest sit
+  under "More options". A white background turned near-black ("big change") no longer looks as
+  good as a barely visible tweak.
+- **The nearest AAA color too** (Jay's idea). When aiming at AA, the panel also offers the
+  nearest color that reaches AAA for the same rule (7:1 body, 4.5:1 large), and once a pair
+  passes AA it offers the step up instead of just "nothing to fix". Icons and borders have no
+  AAA rule, so it doesn't appear there.
+- **Swap says Swap.** A lone "X" next to the arrow read like a close button (Jay). The shortcut
+  is in the tooltip and announced as a keyboard shortcut.
+- **Palette pairs listed once:** "navy and white, either one as the text" instead of two rows
+  with the same ratio; one-way pairs (transparent text) keep their direction.
+- **No eyedropper on every palette row** (eight extra buttons); the pair fields keep it.
+- **Phones: the photo takes only the room it needs,** and the result panel gets the rest.
+- **A half-typed color keeps the last valid color on its swatch,** and the message says so.
+
+**Palette screenshots are read as swatches, not as a photo** (found while testing Jay's Figma
+case). The photo palette tool picked up the board's white page, the label text and outlines,
+and merged a near-white swatch (#f4f4f5) into the page. Swatch mode counts only pixels inside
+flat areas (so lettering and soft edges never become colors), keeps near-identical colors apart,
+and sets aside the color filling the image's border as the page, with an "Add it back" button.
+Tested on a Figma-style board: exactly its six swatches.
 
 ## Left out on purpose
 

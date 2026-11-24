@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { findColors, parseColor, quantize, toHex } from "../engine/color";
 import { criterion, formatRatio, type CriterionId } from "../engine/contrast";
-import { paletteGrid, passingPairs, type Swatch } from "../engine/palette";
+import { mergeBothWays, paletteGrid, passingPairs, type Swatch } from "../engine/palette";
 import { MAX_SWATCHES } from "../engine/share";
-import { extractPalette } from "../engine/palette-extract";
+import { extractSwatches } from "../engine/palette-extract";
 import { ColorField } from "./ColorField";
 import { firstImage, imageToPixels } from "./imagePixels";
 import { action } from "../telemetry";
@@ -36,6 +36,8 @@ export function PaletteView({
   const [target, setTarget] = useState<CriterionId>("aa-text");
   const [pasted, setPasted] = useState("");
   const [pasteNote, setPasteNote] = useState("");
+  /** The page color a screenshot was set on, left out of the palette but offered back. */
+  const [pageColor, setPageColor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const hexesInUse = new Set(
@@ -59,15 +61,22 @@ export function PaletteView({
   const fromImage = async (file: File, via: "paste" | "drop" | "file") => {
     try {
       const px = await imageToPixels(file, 1600);
-      const found = extractPalette(px, { count: MAX_SWATCHES, minShare: 0.004 });
+      const scan = extractSwatches(px, MAX_SWATCHES);
+      const found = scan.swatches;
+      const page = scan.background ? toHex(quantize({ ...scan.background.color, a: 1 })) : null;
       if (found.length < 2) {
-        setPasteNote("Only one color found in that image. Try a screenshot with the swatches.");
+        setPageColor(null);
+        setPasteNote(
+          "Couldn't find at least two solid swatches in that image. Try a tighter screenshot of the palette.",
+        );
         return;
       }
       onChange(found.map((c) => newEntry(inFormat(toHex(quantize({ ...c.color, a: 1 }))))));
-      action("palette_from_image", { via, count: found.length });
+      action("palette_from_image", { via, count: found.length, page: page !== null });
+      setPageColor(page);
       setPasteNote(
-        `Found ${found.length} colors in the image, most common first. Remove any that are just the page around the swatches.`,
+        `Found ${found.length} swatches in the image.` +
+          (page ? ` Left out ${page}, the page behind them.` : ""),
       );
     } catch {
       setPasteNote("That image couldn't be opened. Try a PNG, JPG or WebP.");
@@ -115,7 +124,7 @@ export function PaletteView({
     return p.ok ? [{ id: e.id, input: e.input, name: `Color ${i + 1}`, color: p.color }] : [];
   });
   const grid = paletteGrid(swatches);
-  const pairs = passingPairs(grid, goal.min);
+  const pairs = mergeBothWays(passingPairs(grid, goal.min));
   const hexOf = (s: Swatch) => toHex(quantize(s.color));
 
   // Pasting several colors into one field splits them into separate colors.
@@ -167,6 +176,7 @@ export function PaletteView({
             <li key={e.id} className="palette__item">
               <ColorField
                 compact
+                dropper={false}
                 label={`Color ${i + 1}`}
                 value={e.input}
                 onChange={(v) => update(e.id, v)}
@@ -263,6 +273,24 @@ export function PaletteView({
           <p className="hint" role="status">
             {pasteNote}
           </p>
+        )}
+        {pageColor && (
+          <button
+            type="button"
+            className="btn btn--quiet btn--small"
+            onClick={() => {
+              addColor(pageColor);
+              setPageColor(null);
+              setPasteNote("");
+            }}
+          >
+            <span
+              className="chip chip--inline"
+              style={{ background: pageColor }}
+              aria-hidden="true"
+            />
+            Add {pageColor} back
+          </button>
         )}
         {entries.length >= MAX_SWATCHES && (
           <p className="note">Up to {MAX_SWATCHES} colors, so the grid stays readable.</p>
@@ -407,8 +435,14 @@ export function PaletteView({
                 >
                   Aa
                 </span>
-                <span>
-                  <code>{hexOf(p.text)}</code> on <code>{hexOf(p.background)}</code>
+                <span className="pairs__names">
+                  <span>
+                    <code>{hexOf(p.text)}</code> {p.bothWays ? "and" : "on"}{" "}
+                    <code>{hexOf(p.background)}</code>
+                  </span>
+                  <span className="pairs__way">
+                    {p.bothWays ? "Either one as the text" : "Only this way round"}
+                  </span>
                 </span>
                 <span className="pairs__ratio">{formatRatio(p.ratio)}:1</span>
               </li>

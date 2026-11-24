@@ -38,3 +38,31 @@ export function passingPairs(grid: PairResult[][], min: number): PairResult[] {
     .filter((p) => p.text.id !== p.background.id && p.ratio >= min)
     .sort((a, b) => b.ratio - a.ratio);
 }
+
+export interface PairRow {
+  /** Text color (or the first color, when the pair works both ways). */
+  text: Swatch;
+  background: Swatch;
+  ratio: number;
+  /** Both directions pass: either color can be the text on the other. */
+  bothWays: boolean;
+}
+
+/**
+ * Passing pairs with each two-way pair listed once. Opaque colors have the same ratio in both
+ * directions, so "navy on white" and "white on navy" become one row marked both ways; a pair
+ * that only works one way (transparent text) keeps its direction. Highest ratio first.
+ */
+export function mergeBothWays(pairs: PairResult[]): PairRow[] {
+  const seen = new Map<string, PairRow>();
+  for (const p of pairs) {
+    const key = [p.text.id, p.background.id].sort().join("|");
+    const had = seen.get(key);
+    if (had) {
+      had.bothWays = true;
+      had.ratio = Math.min(had.ratio, p.ratio);
+    } else
+      seen.set(key, { text: p.text, background: p.background, ratio: p.ratio, bothWays: false });
+  }
+  return [...seen.values()].sort((a, b) => b.ratio - a.ratio);
+}

@@ -12,7 +12,7 @@ import {
   type Rgb,
 } from "./color";
 import { contrastRatio, criterion, evaluate, formatRatio, luminance } from "./contrast";
-import { paletteGrid, passingPairs, type Swatch } from "./palette";
+import { mergeBothWays, paletteGrid, passingPairs, type Swatch } from "./palette";
 import { MAX_RECENT, pushRecent, readRecent } from "./recent";
 import { sampleAt, sampleTextPair } from "./sample";
 import { decodeShare, encodeShare } from "./share";
@@ -448,5 +448,31 @@ describe("switching value formats", () => {
       const a = hex(formatColor(hex("#777777"), fmt));
       expect(contrastRatio(quantize(a), hex("#ffffff"))).toBeCloseTo(4.478089453577214, 10);
     }
+  });
+});
+
+describe("palette pairs listed once", () => {
+  const sw = (id: string, input: string): Swatch => ({ id, input, name: id, color: hex(input) });
+
+  it("merges a pair that works both ways into one row", () => {
+    const grid = paletteGrid([
+      sw("navy", "#000052"),
+      sw("white", "#ffffff"),
+      sw("grey", "#999999"),
+    ]);
+    const rows = mergeBothWays(passingPairs(grid, 4.5));
+    expect(rows).toHaveLength(2); // navy/white and navy/grey; white/grey fails
+    expect(rows.every((r) => r.bothWays)).toBe(true);
+    expect(rows[0]!.ratio).toBeGreaterThanOrEqual(rows[1]!.ratio);
+  });
+
+  it("keeps the direction when only one way passes (transparent text)", () => {
+    // 35% black text over white is a pale grey (fails); white text on that color, which as a
+    // background counts as opaque black, passes.
+    const grid = paletteGrid([sw("ink", "#00000059"), sw("white", "#ffffff")]);
+    const rows = mergeBothWays(passingPairs(grid, 4.5));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.bothWays).toBe(false);
+    expect(rows[0]!.text.id).toBe("white");
   });
 });

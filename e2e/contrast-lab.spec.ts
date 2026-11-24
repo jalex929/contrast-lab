@@ -8,24 +8,31 @@ test("opens on a failing pair with no page errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.reload();
-  await expect(page.locator(".canvas__ratio")).toHaveText("4.47:1");
-  await expect(page.locator(".verdict")).toHaveText(
-    "AA: passes large text and icons and control edges; fails body text. Doesn't reach AAA.",
-  );
+  await expect(page.locator(".result__ratio")).toHaveText("4.47:1");
+  await expect(page.locator(".result__status")).toHaveText("Fails body text (AA)");
   expect(errors).toEqual([]);
 });
 
 test("using the nearest passing text color fixes body text", async ({ page }) => {
-  const group = page
-    .locator(".fix")
-    .filter({ has: page.getByRole("heading", { name: "Foreground" }) });
-  await expect(group.locator(".fix__text code").first()).toHaveText("#767676");
-  await group.getByRole("button", { name: /^Use/ }).first().click();
+  await expect(page.locator(".best code")).toHaveText("#767676");
+  await page.getByRole("button", { name: /^Use this fix/ }).click();
   await expect(page.getByRole("textbox", { name: "Foreground", exact: true })).toHaveValue(
     "#767676",
   );
-  await expect(page.locator(".canvas__ratio")).toHaveText("4.54:1");
-  await expect(page.getByText("Passes body text AA. Nothing to fix.")).toBeVisible();
+  await expect(page.locator(".result__ratio")).toHaveText("4.54:1");
+  await expect(page.getByText("Passes body text AA.", { exact: true })).toBeVisible();
+  // Once AA passes, the step up to AAA (7:1) is offered.
+  await expect(page.getByText("To reach AAA · 7:1")).toBeVisible();
+});
+
+test("a failing pair also shows the nearest AAA color, without changing the aim", async ({
+  page,
+}) => {
+  await expect(page.getByRole("combobox", { name: "Aim for" })).toHaveValue("aa-text");
+  await expect(page.getByText("To reach AAA · 7:1")).toBeVisible();
+  await page.getByRole("button", { name: /to reach AAA$/ }).click();
+  await expect(page.locator(".result__ratio")).toHaveText(/^(7\.\d\d|[89]\.\d\d|1\d\.\d\d):1$/);
+  await expect(page.getByText("Passes body text AA, and AAA too. Nothing to fix.")).toBeVisible();
 });
 
 test("a typo explains itself and keeps the last good result", async ({ page }) => {
@@ -33,14 +40,14 @@ test("a typo explains itself and keeps the last good result", async ({ page }) =
   await text.fill("#77");
   await expect(page.getByText("A hex code has 3, 4, 6 or 8 digits")).toBeVisible();
   await expect(text).toHaveAttribute("aria-invalid", "true");
-  await expect(page.locator(".canvas__ratio")).toHaveText("4.47:1");
+  await expect(page.locator(".result__ratio")).toHaveText("4.47:1");
   await text.fill("rgb(0 0 82)");
-  await expect(page.locator(".canvas__ratio")).toHaveText("18.71:1");
+  await expect(page.locator(".result__ratio")).toHaveText("18.71:1");
 });
 
 test("swap trades text and background", async ({ page }) => {
   await page.getByRole("textbox", { name: "Foreground", exact: true }).fill("#000052");
-  await page.getByRole("button", { name: "Swap colors" }).click();
+  await page.locator(".wells").getByRole("button", { name: "Swap" }).click();
   await expect(page.getByRole("textbox", { name: "Foreground", exact: true })).toHaveValue(
     "#ffffff",
   );
@@ -53,7 +60,7 @@ test("the address keeps the current check, so a link reopens it", async ({ page 
   await page.getByRole("textbox", { name: "Foreground", exact: true }).fill("#1a2b3c");
   await expect(page).toHaveURL(/#pair=1a2b3c,ffffff$/);
   await page.goto("./#pair=000052,ffdf3f");
-  await expect(page.locator(".canvas__ratio")).toHaveText("14.15:1");
+  await expect(page.locator(".result__ratio")).toHaveText("14.15:1");
 });
 
 test("palette grid: every pair, and a cell opens the pair checker", async ({ page }) => {
@@ -69,7 +76,7 @@ test("palette grid: every pair, and a cell opens the pair checker", async ({ pag
     "aria-selected",
     "true",
   );
-  await expect(page.locator(".canvas__ratio")).toHaveText("1.32:1");
+  await expect(page.locator(".result__ratio")).toHaveText("1.32:1");
 });
 
 test("tabs work with the arrow keys", async ({ page }) => {
@@ -132,17 +139,17 @@ test("hovering a fix previews it on the canvas without changing the colors", asy
   isMobile,
 }) => {
   test.skip(isMobile, "hover is a pointer feature");
-  const row = page.locator(".fix__row").first();
+  const row = page.locator(".best");
   await row.hover();
   await expect(page.locator(".canvas__badge")).toContainText(
     "Previewing #767676 as the foreground",
   );
-  await expect(page.locator(".canvas__ratio")).toHaveText("4.54:1");
+  await expect(page.locator(".result__ratio")).toHaveText("4.54:1");
   await expect(page.getByRole("textbox", { name: "Foreground", exact: true })).toHaveValue(
     "#777777",
   );
   await page.locator("h1").hover();
-  await expect(page.locator(".canvas__ratio")).toHaveText("4.47:1");
+  await expect(page.locator(".result__ratio")).toHaveText("4.47:1");
 });
 
 test("recent colors can be set to apply to the background (works with a tap)", async ({ page }) => {
@@ -283,7 +290,7 @@ test("pasting two colors into the foreground fills both fields", async ({ page }
   await expect(page.getByRole("textbox", { name: "Background", exact: true })).toHaveValue(
     "#ffdf3f",
   );
-  await expect(page.locator(".canvas__ratio")).toHaveText("14.15:1");
+  await expect(page.locator(".result__ratio")).toHaveText("14.15:1");
 });
 
 test("switching value formats converts the colors and keeps the result", async ({ page }) => {
@@ -291,23 +298,18 @@ test("switching value formats converts the colors and keeps the result", async (
   await expect(page.getByRole("textbox", { name: "Foreground", exact: true })).toHaveValue(
     "rgb(119 119 119)",
   );
-  await expect(page.locator(".canvas__ratio")).toHaveText("4.47:1");
+  await expect(page.locator(".result__ratio")).toHaveText("4.47:1");
   await page.getByLabel("Values as").selectOption("oklch");
   await expect(page.getByRole("textbox", { name: "Background", exact: true })).toHaveValue(
     "oklch(1 0 0)",
   );
-  await expect(page.locator(".canvas__ratio")).toHaveText("4.47:1");
+  await expect(page.locator(".result__ratio")).toHaveText("4.47:1");
   // A fix arrives in the chosen format too.
-  await page
-    .locator(".fix")
-    .filter({ has: page.getByRole("heading", { name: "Foreground" }) })
-    .getByRole("button", { name: /^Use/ })
-    .first()
-    .click();
+  await page.getByRole("button", { name: /^Use this fix/ }).click();
   await expect(page.getByRole("textbox", { name: "Foreground", exact: true })).toHaveValue(
     /^oklch\(/,
   );
-  await expect(page.locator(".canvas__ratio")).toHaveText("4.54:1");
+  await expect(page.locator(".result__ratio")).toHaveText("4.54:1");
 });
 
 test("on narrow screens the fixes sit right under the preview and its checks", async ({
@@ -315,7 +317,7 @@ test("on narrow screens the fixes sit right under the preview and its checks", a
   isMobile,
 }) => {
   const fixes = page.getByRole("heading", { name: "Nearest passing colors" });
-  const checks = page.locator(".stage .checks");
+  const checks = page.locator(".stage .levels");
   const field = page.getByRole("textbox", { name: "Foreground", exact: true });
   const y = async (l: import("@playwright/test").Locator) => (await l.boundingBox())!.y;
   if (isMobile) {
@@ -325,4 +327,34 @@ test("on narrow screens the fixes sit right under the preview and its checks", a
     // Wide screens: beside the preview, in the sidebar under the colors.
     expect(await y(fixes)).toBeGreaterThan(await y(field));
   }
+});
+
+test("a Figma-style palette screenshot fills the palette with just the swatches", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "Check a palette" }).click();
+  await page.locator('input[type="file"]').first().setInputFiles("e2e/fixtures/figma-board.png");
+  await expect(page.getByText("Found 6 swatches in the image.")).toBeVisible();
+  const values = await page
+    .locator(".palette__list input[type=text]")
+    .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  expect(values.sort()).toEqual(
+    ["#000052", "#1a7f5a", "#2563eb", "#f0605d", "#f4f4f5", "#ffdf3f"].sort(),
+  );
+  await page.getByRole("button", { name: "Add #ffffff back" }).click();
+  await expect(page.getByRole("textbox", { name: "Color 7", exact: true })).toHaveValue("#ffffff");
+});
+
+test("the result stays readable when the colors are nearly the same", async ({ page }) => {
+  await page.goto("./#pair=eeeeee,ffffff");
+  await expect(page.locator(".result__ratio")).toHaveText("1.16:1");
+  await expect(page.locator(".result__status")).toHaveText("Fails body text (AA)");
+  // The verdict is drawn in the interface's own ink, not the tested colors.
+  const color = await page.locator(".result__ratio").evaluate((e) => getComputedStyle(e).color);
+  expect(color).toBe("rgb(24, 24, 27)");
+});
+
+test("a half-typed color keeps the last valid one on the swatch and says so", async ({ page }) => {
+  await page.getByRole("textbox", { name: "Foreground", exact: true }).fill("#77z");
+  await expect(page.getByText("Still showing the last valid color, #777777.")).toBeVisible();
 });

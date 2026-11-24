@@ -22,6 +22,8 @@ export function ColorField({
   hint,
   action,
   compact = false,
+  fallback,
+  dropper = true,
 }: {
   label: string;
   /** Exactly what's in the box. */
@@ -32,8 +34,13 @@ export function ColorField({
   action?: ReactNode;
   /** Smaller swatch and field, for lists. */
   compact?: boolean;
+  /** The last valid color, shown on the swatch while the typed value can't be read. */
+  fallback?: string;
+  /** Show the screen eyedropper (where the browser has one). */
+  dropper?: boolean;
 }) {
   const id = useId();
+  const showDropper = dropper && !!EyeDropperApi;
   const [dropping, setDropping] = useState(false);
   const parsed = parseColor(value);
   const color: Rgb | null = parsed.ok ? parsed.color : null;
@@ -89,7 +96,7 @@ export function ColorField({
         {label}
       </label>
       <div
-        className={`field__row ${EyeDropperApi ? "field__row--dropper" : ""} ${action ? "field__row--action" : ""}`}
+        className={`field__row ${showDropper ? "field__row--dropper" : ""} ${action ? "field__row--action" : ""}`}
       >
         <label className="field__swatch" title="Choose a color">
           <span className="visually-hidden">
@@ -97,7 +104,7 @@ export function ColorField({
           </span>
           <span
             className="field__swatch-fill"
-            style={{ background: color ? toHex(quantize(color)) : "transparent" }}
+            style={{ background: color ? toHex(quantize(color)) : (fallback ?? "transparent") }}
           />
           <input type="color" value={pickerValue} onChange={(e) => keepAlpha(e.target.value)} />
         </label>
@@ -115,7 +122,7 @@ export function ColorField({
           }
           onChange={(e) => onChange(e.target.value)}
         />
-        {EyeDropperApi && (
+        {showDropper && (
           <button
             type="button"
             className="field__dropper"
@@ -141,6 +148,7 @@ export function ColorField({
         <p className="field__error" id={errorId}>
           <span aria-hidden="true">! </span>
           {parsed.error}
+          {fallback && ` Still showing the last valid color, ${fallback}.`}
         </p>
       )}
     </div>

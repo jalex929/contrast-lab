@@ -1137,13 +1137,17 @@ svg {
 
   .workspace__body {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .workspace__scroll {
+    max-height: 55dvh;
+    padding: 10px;
   }
 
   .workspace__side {
     border-left: 0;
     border-top: 1px solid var(--line);
-    max-height: 40dvh;
   }
 }
 
@@ -1533,6 +1537,233 @@ svg {
   font: 600 13px var(--font-sans);
 }
 
+/* ---------- Result line (neutral, so it stays readable whatever the colors) ---------- */
+
+.result {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.result__ratio {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.result__ratio span {
+  font-size: 0.45em;
+  margin-left: 2px;
+}
+
+.result__verdict p {
+  margin: 0;
+}
+
+.result__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.result__status svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.result--fail .result__status {
+  color: var(--fail);
+}
+
+.result__detail {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.aim {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.aim select {
+  max-width: none;
+}
+
+.canvas__sample {
+  font-size: clamp(56px, 7vw, 88px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* Checks in two rows: AA (the usual bar) and AAA (the stricter one). */
+.levels {
+  display: grid;
+  gap: 8px;
+}
+
+.levels__row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.levels__name {
+  font: 700 13px var(--font-mono);
+  color: var(--muted);
+}
+
+/* ---------- Best fix ---------- */
+
+.best {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid var(--ink);
+  background: var(--card);
+}
+
+.best__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.best__row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.best .chip {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+}
+
+.best__text {
+  margin: 0;
+  display: grid;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.best__text code {
+  font-size: 15px;
+}
+
+.best__text span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.best__use {
+  width: 100%;
+  justify-content: center;
+}
+
+.more summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  list-style: none;
+}
+
+.more summary::-webkit-details-marker {
+  display: none;
+}
+
+.more summary::before {
+  content: "▸";
+  font-size: 12px;
+  margin-right: 6px;
+}
+
+.more[open] summary::before {
+  content: "▾";
+}
+
+.more[open] {
+  display: grid;
+  gap: 8px;
+}
+
+.stretch {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--edge);
+}
+
+.stretch__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ---------- Compact swap between the two swatches ---------- */
+
+.wells .swap {
+  justify-self: start;
+  margin-left: 8px;
+  min-height: 36px;
+  padding: 4px 8px;
+  gap: 4px;
+  border-radius: 999px;
+}
+
+/* ---------- Palette pair rows ---------- */
+
+.pairs__names {
+  display: grid;
+  line-height: 1.35;
+}
+
+.pairs__way {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chip--inline {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  vertical-align: middle;
+}
+
 /* ---------- Footer ---------- */
 
 .foot {
@@ -1608,6 +1839,14 @@ svg {
   .canvas {
     min-height: 0;
     padding: 24px;
+  }
+
+  .result {
+    grid-template-columns: auto 1fr;
+  }
+
+  .result .aim {
+    grid-column: 1 / -1;
   }
 }
 

@@ -132,3 +132,94 @@ function fromLab(lab: Lab): Rgb {
   const cl = (v: number) => Math.min(255, Math.max(0, v));
   return { r: cl(c.r), g: cl(c.g), b: cl(c.b), a: 1 };
 }
+
+export interface SwatchScan {
+  /** The swatch colors, biggest first. */
+  swatches: ColorShare[];
+  /** The page behind the swatches (it fills the image's edges), left out of `swatches`. */
+  background: ColorShare | null;
+}
+
+/**
+ * The colors of a palette screenshot (Coolors, a Figma board, a style guide), which is a
+ * different problem from a photo: swatches are flat blocks, labels are small text, and the page
+ * fills the edges. Only pixels inside flat areas count, so lettering and soft edges never become
+ * colors; near-identical colors stay separate (a design system's #f4f4f5 is not its #ffffff);
+ * and the color that fills most of the image's border is set aside as the page.
+ */
+export function extractSwatches(img: Pixels, maxSwatches = 8): SwatchScan {
+  const maxSamples = 60000;
+  const step = Math.max(1, Math.floor(Math.sqrt((img.width * img.height) / maxSamples)));
+  const R = Math.max(2, step * 2); // neighbors this far away must match for a pixel to be "flat"
+  const px = (x: number, y: number) => (y * img.width + x) * 4;
+  const same = (i: number, j: number) =>
+    Math.abs(img.data[i]! - img.data[j]!) <= 3 &&
+    Math.abs(img.data[i + 1]! - img.data[j + 1]!) <= 3 &&
+    Math.abs(img.data[i + 2]! - img.data[j + 2]!) <= 3 &&
+    img.data[j + 3]! >= 200;
+
+  // Count exact colors (to the nearest 2 per channel) in flat areas.
+  const counts = new Map<number, { n: number; r: number; g: number; b: number; edge: number }>();
+  let flatTotal = 0;
+  let edgeTotal = 0;
+  for (let y = R; y < img.height - R; y += step) {
+    for (let x = R; x < img.width - R; x += step) {
+      const i = px(x, y);
+      if (img.data[i + 3]! < 200) continue;
+      if (
+        !same(i, px(x - R, y)) ||
+        !same(i, px(x + R, y)) ||
+        !same(i, px(x, y - R)) ||
+        !same(i, px(x, y + R))
+      )
+        continue;
+      const r = img.data[i]!;
+      const g = img.data[i + 1]!;
+      const b = img.data[i + 2]!;
+      const key = ((r >> 1) << 14) | ((g >> 1) << 7) | (b >> 1);
+      const c = counts.get(key) ?? { n: 0, r: 0, g: 0, b: 0, edge: 0 };
+      c.n++;
+      c.r += r;
+      c.g += g;
+      c.b += b;
+      const onEdge =
+        x - R < step || y - R < step || x + R + step >= img.width || y + R + step >= img.height;
+      if (onEdge) {
+        c.edge++;
+        edgeTotal++;
+      }
+      counts.set(key, c);
+      flatTotal++;
+    }
+  }
+  if (flatTotal === 0) return { swatches: [], background: null };
+
+  // Merge colors that are practically identical (JPEG wobble), not merely close.
+  type Group = { lab: [number, number, number]; color: Rgb; n: number; edge: number };
+  const groups: Group[] = [];
+  for (const c of [...counts.values()].sort((a, b) => b.n - a.n)) {
+    const color = { r: c.r / c.n, g: c.g / c.n, b: c.b / c.n, a: 1 };
+    const lab = rgbToOklab(color);
+    const twin = groups.find((g) => Math.sqrt(dist2(g.lab, lab)) < 0.012);
+    if (twin) {
+      twin.n += c.n;
+      twin.edge += c.edge;
+    } else groups.push({ lab, color, n: c.n, edge: c.edge });
+  }
+
+  // The page: the color filling most of the image's border.
+  const byEdge = [...groups].sort((a, b) => b.edge - a.edge)[0]!;
+  const isPage = edgeTotal > 0 && byEdge.edge / edgeTotal > 0.6;
+  const page = isPage ? byEdge : null;
+
+  const minShare = 0.002;
+  const swatches = groups
+    .filter((g) => g !== page && g.n / flatTotal >= minShare)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, maxSwatches)
+    .map((g) => ({ color: g.color, share: g.n / flatTotal }));
+  return {
+    swatches,
+    background: page ? { color: page.color, share: page.n / flatTotal } : null,
+  };
+}
