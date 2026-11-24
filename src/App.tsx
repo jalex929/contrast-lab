@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { parseColor, quantize, toHex } from "./engine/color";
+import {
+  FORMATS,
+  findColors,
+  formatColor,
+  parseColor,
+  quantize,
+  toHex,
+  type Format,
+} from "./engine/color";
 import { pushRecent, readRecent } from "./engine/recent";
 import { decodeShare, encodeShare, type Shared } from "./engine/share";
 import { PairView } from "./ui/PairView";
@@ -14,9 +22,25 @@ const LAB_URL =
 type Mode = "pair" | "palette";
 
 const RECENT_KEY = "contrast-lab:recent";
+const FORMAT_KEY = "contrast-lab:format";
+
+function storedFormat(): Format {
+  try {
+    const v = localStorage.getItem(FORMAT_KEY);
+    return FORMATS.some((f) => f.id === v) ? (v as Format) : "hex";
+  } catch {
+    return "hex";
+  }
+}
+
+/** The same color in another format; anything unreadable is left as typed. */
+const convert = (value: string, format: Format) => {
+  const p = parseColor(value);
+  return p.ok ? formatColor(p.color, format) : value;
+};
 
 const DEFAULT_PAIR = { text: "#777777", background: "#ffffff" };
-const DEFAULT_PALETTE = ["#000052", "#ffdf3f", "#ffffff", "#6b6b8f"];
+const DEFAULT_PALETTE: string[] = [];
 
 function initial(): { mode: Mode; text: string; background: string; palette: PaletteEntry[] } {
   const shared = typeof location !== "undefined" ? decodeShare(location.hash) : null;
@@ -40,6 +64,31 @@ export function App() {
   const [background, setBackground] = useState(state.background);
   const [palette, setPalette] = useState<PaletteEntry[]>(state.palette);
   const [copied, setCopied] = useState(false);
+  const [format, setFormat] = useState<Format>(storedFormat);
+
+  const changeFormat = (f: Format) => {
+    setFormat(f);
+    try {
+      localStorage.setItem(FORMAT_KEY, f);
+    } catch {
+      /* storage off: the choice lasts for this visit */
+    }
+    setText((v) => convert(v, f));
+    setBackground((v) => convert(v, f));
+    setPalette((list) => list.map((e) => ({ ...e, input: convert(e.input, f) })));
+  };
+
+  /** A picked color (always hex inside the app) in the chosen format. */
+  const inFormat = (value: string) => convert(value, format);
+
+  /** Typing or pasting into the foreground field: two colors at once fill both fields. */
+  const setForeground = (v: string) => {
+    const many = findColors(v, { bare: true });
+    if (many.length >= 2) {
+      setText(inFormat(many[0]!));
+      setBackground(inFormat(many[1]!));
+    } else setText(v);
+  };
   const [recent, setRecent] = useState<string[]>(() =>
     typeof localStorage === "undefined" ? [] : readRecent(localStorage.getItem(RECENT_KEY)),
   );
@@ -192,12 +241,24 @@ export function App() {
             </button>
           ))}
         </div>
-        <button type="button" className="btn btn--quiet" onClick={copyLink}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" />
-          </svg>
-          {copied ? "Link copied" : "Copy link"}
-        </button>
+        <div className="bar__right">
+          <label className="values-as">
+            <span>Values as</span>
+            <select value={format} onChange={(e) => changeFormat(e.target.value as Format)}>
+              {FORMATS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="btn btn--quiet" onClick={copyLink}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" />
+            </svg>
+            {copied ? "Link copied" : "Copy link"}
+          </button>
+        </div>
         <span className="visually-hidden" role="status">
           {copied ? "Link copied to the clipboard." : ""}
         </span>
@@ -208,8 +269,9 @@ export function App() {
           <PairView
             text={text}
             background={background}
-            onText={setText}
+            onText={setForeground}
             onBackground={setBackground}
+            inFormat={inFormat}
             onSwap={swap}
             recent={recent}
             onPalette={(hexes) => {
@@ -218,7 +280,13 @@ export function App() {
             }}
           />
         ) : (
-          <PaletteView entries={palette} onChange={setPalette} onCheckPair={openPair} />
+          <PaletteView
+            entries={palette}
+            onChange={setPalette}
+            onCheckPair={openPair}
+            recent={recent}
+            inFormat={inFormat}
+          />
         )}
       </main>
 

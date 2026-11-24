@@ -57,8 +57,11 @@ test("the address keeps the current check, so a link reopens it", async ({ page 
 });
 
 test("palette grid: every pair, and a cell opens the pair checker", async ({ page }) => {
-  await page.getByRole("tab", { name: "Check a palette" }).click();
-  await expect(page).toHaveURL(/#palette=000052,ffdf3f,ffffff,6b6b8f$/);
+  await page.goto("./#palette=000052,ffdf3f,ffffff,6b6b8f");
+  await expect(page.getByRole("tab", { name: "Check a palette" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   const table = page.getByRole("table");
   await expect(table.getByRole("columnheader")).toHaveCount(4);
   await page.getByRole("button", { name: "Open #ffdf3f on #ffffff in the pair checker" }).click();
@@ -197,7 +200,7 @@ test("icon or border mode judges the box at 3:1 and aims the fixes there", async
   await page.mouse.up();
   await expect(dialog.getByRole("status")).toContainText("fails icons and borders (3:1)");
   await dialog.getByRole("button", { name: "Done" }).click();
-  await expect(page.getByRole("combobox")).toHaveValue("non-text");
+  await expect(page.getByRole("combobox", { name: "Aim for" })).toHaveValue("non-text");
 });
 
 test("click a color sets foreground, then background", async ({ page }) => {
@@ -252,4 +255,57 @@ test("the photo's palette can be checked as a palette", async ({ page }) => {
   await expect(page.getByRole("table")).toBeVisible();
   // White, navy and the grey are the photo's main colors.
   await expect(page.getByRole("textbox", { name: "Color 1", exact: true })).toHaveValue("#ffffff");
+});
+
+test("the palette starts empty and offers recent colors", async ({ page }) => {
+  await page.getByRole("textbox", { name: "Foreground", exact: true }).fill("#123456");
+  await page.waitForTimeout(900); // long enough to join the recent colors
+  await page.getByRole("tab", { name: "Check a palette" }).click();
+  await expect(page.getByText("Add the colors you want to compare.")).toBeVisible();
+  await page.getByRole("button", { name: "Add #123456 to the palette" }).click();
+  await expect(page.getByRole("textbox", { name: "Color 1", exact: true })).toHaveValue("#123456");
+});
+
+test("a pasted list, with or without #, fills the palette", async ({ page }) => {
+  await page.getByRole("tab", { name: "Check a palette" }).click();
+  await page.getByText("Paste a list of colors").click();
+  await page.getByLabel("Colors, from anywhere").fill("000052, FFDF3F, #ffffff");
+  await page.getByRole("button", { name: "Use these colors" }).click();
+  await expect(page.getByRole("textbox", { name: "Color 3", exact: true })).toHaveValue("#ffffff");
+  await expect(page.getByRole("table").getByRole("columnheader")).toHaveCount(3);
+});
+
+test("pasting two colors into the foreground fills both fields", async ({ page }) => {
+  await page.getByRole("textbox", { name: "Foreground", exact: true }).fill("000052, ffdf3f");
+  await expect(page.getByRole("textbox", { name: "Foreground", exact: true })).toHaveValue(
+    "#000052",
+  );
+  await expect(page.getByRole("textbox", { name: "Background", exact: true })).toHaveValue(
+    "#ffdf3f",
+  );
+  await expect(page.locator(".canvas__ratio")).toHaveText("14.15:1");
+});
+
+test("switching value formats converts the colors and keeps the result", async ({ page }) => {
+  await page.getByLabel("Values as").selectOption("rgb");
+  await expect(page.getByRole("textbox", { name: "Foreground", exact: true })).toHaveValue(
+    "rgb(119 119 119)",
+  );
+  await expect(page.locator(".canvas__ratio")).toHaveText("4.47:1");
+  await page.getByLabel("Values as").selectOption("oklch");
+  await expect(page.getByRole("textbox", { name: "Background", exact: true })).toHaveValue(
+    "oklch(1 0 0)",
+  );
+  await expect(page.locator(".canvas__ratio")).toHaveText("4.47:1");
+  // A fix arrives in the chosen format too.
+  await page
+    .locator(".fix")
+    .filter({ has: page.getByRole("heading", { name: "Foreground" }) })
+    .getByRole("button", { name: /^Use/ })
+    .first()
+    .click();
+  await expect(page.getByRole("textbox", { name: "Foreground", exact: true })).toHaveValue(
+    /^oklch\(/,
+  );
+  await expect(page.locator(".canvas__ratio")).toHaveText("4.54:1");
 });

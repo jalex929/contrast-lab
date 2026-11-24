@@ -204,12 +204,13 @@ export function deltaE(x: Rgb, y: Rgb): number {
   return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 }
 
-const FORMATS = "a hex code like #1a2b3c, rgb(26 43 60), hsl(210 40% 17%) or oklch(0.3 0.04 250)";
+const FORMAT_HINT =
+  "a hex code like #1a2b3c, rgb(26 43 60), hsl(210 40% 17%) or oklch(0.3 0.04 250)";
 
 /** Reads a CSS color. Errors say what was expected, in plain words. */
 export function parseColor(input: string): ParseResult {
   const s = input.trim();
-  if (!s) return { ok: false, error: `Type a color: ${FORMATS}.` };
+  if (!s) return { ok: false, error: `Type a color: ${FORMAT_HINT}.` };
 
   const hex = parseHex(s);
   if (hex) return { ok: true, color: hex };
@@ -221,7 +222,7 @@ export function parseColor(input: string): ParseResult {
   }
 
   const fn = /^([a-z]+)\((.*)\)$/i.exec(s);
-  if (!fn) return { ok: false, error: `That isn't a color this tool reads. Try ${FORMATS}.` };
+  if (!fn) return { ok: false, error: `That isn't a color this tool reads. Try ${FORMAT_HINT}.` };
   const name = fn[1]!.toLowerCase();
   const parts = args(fn[2]!);
   const bad = (what: string): ParseResult => ({ ok: false, error: `${what}` });
@@ -285,5 +286,78 @@ export function parseColor(input: string): ParseResult {
     return { ok: true, color: { ...rgb, a: clamp(a, 0, 1) } };
   }
 
-  return { ok: false, error: `${name}() isn't supported here. Try ${FORMATS}.` };
+  return { ok: false, error: `${name}() isn't supported here. Try ${FORMAT_HINT}.` };
+}
+
+/**
+ * Every color in a block of pasted text, in order: hex codes (#abc, #aabbcc, #aabbccdd) and
+ * rgb(), hsl() and oklch() values, separated by anything (commas, spaces, new lines, CSS around
+ * them). With `bare`, 6- or 8-digit hex codes without a "#" count too ("000052, ffdf3f"); a
+ * 3-digit number without "#" never does, so "100" isn't read as a color.
+ */
+export function findColors(text: string, opts: { bare?: boolean } = {}): string[] {
+  const parts = [
+    "#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z])",
+    "\\b(?:rgba?|hsla?|oklch)\\([^()]*\\)",
+  ];
+  if (opts.bare) parts.push("(?<![#0-9a-z])(?:[0-9a-f]{8}|[0-9a-f]{6})(?![0-9a-z])");
+  const re = new RegExp(parts.join("|"), "gi");
+  const out: string[] = [];
+  for (const m of text.matchAll(re)) {
+    const raw = m[0];
+    const value = /^[0-9a-f]+$/i.test(raw) ? `#${raw}` : raw;
+    if (parseColor(value).ok) out.push(value.startsWith("#") ? value.toLowerCase() : value);
+  }
+  return out;
+}
+
+export type Format = "hex" | "rgb" | "hsl" | "oklch";
+
+export const FORMATS: { id: Format; label: string }[] = [
+  { id: "hex", label: "HEX" },
+  { id: "rgb", label: "RGB" },
+  { id: "hsl", label: "HSL" },
+  { id: "oklch", label: "OKLCH" },
+];
+
+export function rgbToHsl(c: Rgb): { h: number; s: number; l: number } {
+  const r = c.r / 255;
+  const g = c.g / 255;
+  const b = c.b / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return { h: 0, s: 0, l };
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h: number;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return { h: (h * 60 + 360) % 360, s, l };
+}
+
+const trim = (v: number, digits: number) => String(Number(v.toFixed(digits)));
+
+/**
+ * The same color written in another format. Values are rounded only as far as still reads back
+ * to the exact same 8-bit color, so switching formats never changes a contrast result.
+ */
+export function formatColor(input: Rgb, format: Format): string {
+  const c = quantize(input);
+  const alpha = c.a < 1 ? ` / ${trim(c.a, 3)}` : "";
+  switch (format) {
+    case "hex":
+      return toHex(c);
+    case "rgb":
+      return `rgb(${c.r} ${c.g} ${c.b}${alpha})`;
+    case "hsl": {
+      const { h, s, l } = rgbToHsl(c);
+      return `hsl(${trim(h, 2)} ${trim(s * 100, 2)}% ${trim(l * 100, 2)}%${alpha})`;
+    }
+    case "oklch": {
+      const o = rgbToOklch(c);
+      return `oklch(${trim(o.l, 5)} ${trim(o.c, 5)} ${trim(o.c < 1e-4 ? 0 : o.h, 3)}${alpha})`;
+    }
+  }
 }

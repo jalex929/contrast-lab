@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { isColorDrag, readDroppedColor } from "./Chip";
 import { parseColor, quantize, toHex, type Rgb } from "../engine/color";
 
@@ -19,12 +19,18 @@ export function ColorField({
   value,
   onChange,
   hint,
+  action,
+  compact = false,
 }: {
   label: string;
   /** Exactly what's in the box. */
   value: string;
   onChange: (text: string) => void;
   hint?: string;
+  /** A button at the end of the row (e.g. Remove in a palette). */
+  action?: ReactNode;
+  /** Smaller swatch and field, for lists. */
+  compact?: boolean;
 }) {
   const id = useId();
   const [dropping, setDropping] = useState(false);
@@ -58,7 +64,7 @@ export function ColorField({
 
   return (
     <div
-      className={`field ${dropping ? "field--drop" : ""}`}
+      className={`field ${compact ? "field--compact" : ""} ${dropping ? "field--drop" : ""}`}
       onDragOver={(e) => {
         if (!isColorDrag(e)) return;
         e.preventDefault();
@@ -77,7 +83,9 @@ export function ColorField({
       <label className="field__label" htmlFor={id}>
         {label}
       </label>
-      <div className={`field__row ${EyeDropperApi ? "field__row--dropper" : ""}`}>
+      <div
+        className={`field__row ${EyeDropperApi ? "field__row--dropper" : ""} ${action ? "field__row--action" : ""}`}
+      >
         <label className="field__swatch" title="Choose a color">
           <span className="visually-hidden">
             Choose {label.toLowerCase()} with the color picker
@@ -117,6 +125,7 @@ export function ColorField({
             </svg>
           </button>
         )}
+        {action}
       </div>
       {hint && (
         <p className="field__hint" id={hintId}>

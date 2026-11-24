@@ -1,6 +1,9 @@
 import {
   composite,
   deltaE,
+  findColors,
+  formatColor,
+  FORMATS,
   oklchToRgb,
   parseColor,
   quantize,
@@ -376,5 +379,74 @@ describe("recent colors", () => {
     expect(readRecent('["#111111","nope",3]')).toEqual(["#111111"]);
     expect(readRecent("not json")).toEqual([]);
     expect(readRecent(null)).toEqual([]);
+  });
+});
+
+describe("finding colors in pasted text", () => {
+  it("finds hex and color functions in any order, with anything between them", () => {
+    expect(
+      findColors("#000052, #ffdf3f\nrgb(255 255 255) and hsl(210 40% 17%); --x: #abc;"),
+    ).toEqual(["#000052", "#ffdf3f", "rgb(255 255 255)", "hsl(210 40% 17%)", "#abc"]);
+  });
+
+  it("ignores things that only look like colors", () => {
+    expect(findColors("issue #12345 and #ggg, 000000, rgb(nope)")).toEqual([]);
+  });
+});
+
+describe("bare hex lists", () => {
+  it("reads comma-separated hex codes without # when asked", () => {
+    expect(findColors("000052, FFDF3F,ffffff 1a2b3c80", { bare: true })).toEqual([
+      "#000052",
+      "#ffdf3f",
+      "#ffffff",
+      "#1a2b3c80",
+    ]);
+  });
+
+  it("still ignores short numbers and words", () => {
+    expect(findColors("100, 200, cafe, 12345", { bare: true })).toEqual([]);
+    expect(findColors("000052, ffdf3f")).toEqual([]); // bare codes only when asked
+  });
+});
+
+describe("switching value formats", () => {
+  const samples = [
+    "#000052",
+    "#ffdf3f",
+    "#777777",
+    "#ffffff",
+    "#000000",
+    "#1a7f5a",
+    "#b4235a",
+    "#2563eb",
+    "#ff0000",
+    "#00ff00",
+    "#0000ff",
+    "#c1121f",
+    "#f4f4f5",
+    "#6b6b8f",
+    "#ff000080",
+  ];
+
+  it.each(FORMATS.map((f) => f.id))("%s reads back to the exact same color", (format) => {
+    for (const h of samples) {
+      const written = formatColor(hex(h), format);
+      expect(toHex(quantize(hex(written)))).toBe(h);
+    }
+  });
+
+  it("writes each format the way CSS does", () => {
+    expect(formatColor(hex("#ff0000"), "rgb")).toBe("rgb(255 0 0)");
+    expect(formatColor(hex("#ff0000"), "hsl")).toBe("hsl(0 100% 50%)");
+    expect(formatColor(hex("#ff000080"), "rgb")).toBe("rgb(255 0 0 / 0.502)");
+    expect(formatColor(hex("#ffffff"), "oklch")).toMatch(/^oklch\(1 0 0\)$/);
+  });
+
+  it("never changes a contrast result", () => {
+    for (const fmt of FORMATS.map((f) => f.id)) {
+      const a = hex(formatColor(hex("#777777"), fmt));
+      expect(contrastRatio(quantize(a), hex("#ffffff"))).toBeCloseTo(4.478089453577214, 10);
+    }
   });
 });

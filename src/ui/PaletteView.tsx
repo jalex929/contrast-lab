@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { parseColor, quantize, toHex } from "../engine/color";
+import { useEffect, useRef, useState } from "react";
+import { findColors, parseColor, quantize, toHex } from "../engine/color";
 import { criterion, formatRatio, type CriterionId } from "../engine/contrast";
 import { paletteGrid, passingPairs, type Swatch } from "../engine/palette";
 import { MAX_SWATCHES } from "../engine/share";
+import { extractPalette } from "../engine/palette-extract";
 import { ColorField } from "./ColorField";
+import { firstImage, imageToPixels } from "./imagePixels";
 
 export interface PaletteEntry {
   id: string;
@@ -19,12 +21,89 @@ export function PaletteView({
   entries,
   onChange,
   onCheckPair,
+  recent,
+  inFormat,
 }: {
   entries: PaletteEntry[];
   onChange: (entries: PaletteEntry[]) => void;
   onCheckPair: (text: string, background: string) => void;
+  /** Recently used colors, offered as one-click additions. */
+  recent: string[];
+  /** Writes a color in the format the person chose. */
+  inFormat: (value: string) => string;
 }) {
   const [target, setTarget] = useState<CriterionId>("aa-text");
+  const [pasted, setPasted] = useState("");
+  const [pasteNote, setPasteNote] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const hexesInUse = new Set(
+    entries.map((e) => {
+      const p = parseColor(e.input);
+      return p.ok ? toHex(quantize(p.color)) : e.input;
+    }),
+  );
+  const suggestions = recent.filter((h) => !hexesInUse.has(h)).slice(0, 12);
+
+  const addColor = (hex: string) => {
+    if (entries.length >= MAX_SWATCHES) {
+      setPasteNote(`A palette holds up to ${MAX_SWATCHES} colors. Remove one first.`);
+      return;
+    }
+    onChange([...entries, newEntry(inFormat(hex))]);
+  };
+
+  // A screenshot of a palette (Coolors, a Figma board, a style guide): find its swatches.
+  const fromImage = async (file: File) => {
+    try {
+      const px = await imageToPixels(file, 1600);
+      const found = extractPalette(px, { count: MAX_SWATCHES, minShare: 0.004 });
+      if (found.length < 2) {
+        setPasteNote("Only one color found in that image. Try a screenshot with the swatches.");
+        return;
+      }
+      onChange(found.map((c) => newEntry(inFormat(toHex(quantize({ ...c.color, a: 1 }))))));
+      setPasteNote(
+        `Found ${found.length} colors in the image, most common first. Remove any that are just the page around the swatches.`,
+      );
+    } catch {
+      setPasteNote("That image couldn't be opened. Try a PNG, JPG or WebP.");
+    }
+  };
+  const fromImageRef = useRef(fromImage);
+  fromImageRef.current = fromImage;
+
+  // Paste a screenshot anywhere on this tab (pasting text into a field still works).
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const file = firstImage(e.clipboardData?.files);
+      if (!file) return;
+      e.preventDefault();
+      void fromImageRef.current(file);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, []);
+
+  const usePasted = () => {
+    const found = findColors(pasted, { bare: true });
+    if (found.length < 2) {
+      setPasteNote(
+        found.length === 1
+          ? "Found one color. Paste at least two to compare."
+          : "No colors found. Paste hex codes like #000052, or rgb(), hsl() or oklch() values.",
+      );
+      return;
+    }
+    const unique = [...new Set(found)];
+    onChange(unique.slice(0, MAX_SWATCHES).map((c) => newEntry(inFormat(c))));
+    setPasteNote(
+      unique.length > MAX_SWATCHES
+        ? `Found ${unique.length} colors; using the first ${MAX_SWATCHES}.`
+        : `Using ${unique.length} colors.`,
+    );
+    setPasted("");
+  };
   const goal = criterion(target);
 
   const swatches: Swatch[] = entries.flatMap((e, i) => {
@@ -35,44 +114,151 @@ export function PaletteView({
   const pairs = passingPairs(grid, goal.min);
   const hexOf = (s: Swatch) => toHex(quantize(s.color));
 
-  const update = (id: string, input: string) =>
+  // Pasting several colors into one field splits them into separate colors.
+  const update = (id: string, input: string) => {
+    const many = findColors(input, { bare: true });
+    if (many.length >= 2) {
+      const at = entries.findIndex((e) => e.id === id);
+      const added = many.map((c) => newEntry(inFormat(c)));
+      const next = [...entries.slice(0, at), ...added, ...entries.slice(at + 1)];
+      onChange(next.slice(0, MAX_SWATCHES));
+      setPasteNote(
+        next.length > MAX_SWATCHES
+          ? `Split into ${many.length} colors; the palette keeps the first ${MAX_SWATCHES}.`
+          : `Split into ${many.length} colors.`,
+      );
+      return;
+    }
     onChange(entries.map((e) => (e.id === id ? { ...e, input } : e)));
+  };
   const remove = (id: string) => onChange(entries.filter((e) => e.id !== id));
   const add = () => onChange([...entries, newEntry("#808080")]);
 
   return (
     <div className="palette">
-      <section className="palette__inputs" aria-labelledby="palette-colors">
+      <section
+        className="palette__inputs"
+        aria-labelledby="palette-colors"
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+        }}
+        onDrop={(e) => {
+          const file = firstImage(e.dataTransfer.files);
+          if (!file) return;
+          e.preventDefault();
+          void fromImage(file);
+        }}
+      >
         <h2 id="palette-colors" className="section-title">
           Your palette
         </h2>
+        {entries.length === 0 && (
+          <p className="hint">
+            Add the colors you want to compare. Every color is checked against every other one.
+          </p>
+        )}
         <ol className="palette__list">
           {entries.map((e, i) => (
             <li key={e.id} className="palette__item">
               <ColorField
+                compact
                 label={`Color ${i + 1}`}
                 value={e.input}
                 onChange={(v) => update(e.id, v)}
+                action={
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => remove(e.id)}
+                    title="Remove"
+                  >
+                    <span className="visually-hidden">Remove color {i + 1}</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                }
               />
-              <button
-                type="button"
-                className="btn btn--quiet btn--small"
-                onClick={() => remove(e.id)}
-                disabled={entries.length <= 2}
-              >
-                Remove <span className="visually-hidden">color {i + 1}</span>
-              </button>
             </li>
           ))}
         </ol>
         <button
           type="button"
-          className="btn"
+          className="btn btn--quiet btn--small"
           onClick={add}
           disabled={entries.length >= MAX_SWATCHES}
         >
-          Add a color
+          + Add a color
         </button>
+        {suggestions.length > 0 && (
+          <div className="palette__suggest">
+            <h3 className="fix__title">Recent colors</h3>
+            <ul className="recent" role="list">
+              {suggestions.map((h) => (
+                <li key={h}>
+                  <button
+                    type="button"
+                    className="chip"
+                    style={{ background: h }}
+                    title={`Add ${h}`}
+                    onClick={() => addColor(h)}
+                  >
+                    <span className="visually-hidden">Add {h} to the palette</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="palette__shot">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="visually-hidden"
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void fromImage(f);
+              e.target.value = "";
+            }}
+          />
+          <p>
+            Have the palette somewhere already (Coolors, a Figma board, a style guide)? Paste a
+            screenshot (<kbd>Ctrl</kbd>+<kbd>V</kbd>), drop one here, or{" "}
+            <button type="button" className="link-btn" onClick={() => fileRef.current?.click()}>
+              choose one
+            </button>
+            .
+          </p>
+        </div>
+        <details className="paste">
+          <summary>Paste a list of colors</summary>
+          <label className="field__label" htmlFor="paste-colors">
+            Colors, from anywhere
+          </label>
+          <textarea
+            id="paste-colors"
+            className="paste__box"
+            rows={3}
+            value={pasted}
+            placeholder="#000052, #ffdf3f, rgb(255 255 255)…"
+            onChange={(e) => setPasted(e.target.value)}
+          />
+          <p className="hint">
+            Hex codes (with or without #), rgb(), hsl() or oklch(), separated by commas, spaces or
+            new lines. CSS or a design-token file works too.
+          </p>
+          <button type="button" className="btn btn--small" onClick={usePasted}>
+            Use these colors
+          </button>
+        </details>
+        {pasteNote && (
+          <p className="hint" role="status">
+            {pasteNote}
+          </p>
+        )}
         {entries.length >= MAX_SWATCHES && (
           <p className="note">Up to {MAX_SWATCHES} colors, so the grid stays readable.</p>
         )}

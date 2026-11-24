@@ -48,6 +48,7 @@ export function PairView({
   onSwap,
   recent,
   onPalette,
+  inFormat,
 }: {
   text: string;
   background: string;
@@ -57,6 +58,8 @@ export function PairView({
   recent: string[];
   /** Open these colors in palette mode. */
   onPalette: (hexes: string[]) => void;
+  /** Writes a picked color in the format the person chose. */
+  inFormat: (value: string) => string;
 }) {
   const fg = useLastGood(text, { r: 119, g: 119, b: 119, a: 1 });
   const bg = useLastGood(background, { r: 255, g: 255, b: 255, a: 1 });
@@ -89,8 +92,8 @@ export function PairView({
 
   const pick = (t: Target, hex: string) => {
     setPreview(null);
-    if (t === "text") onText(hex);
-    else onBackground(hex);
+    if (t === "text") onText(inFormat(hex));
+    else onBackground(inFormat(hex));
   };
 
   const canvasFg = hexOf(showFg);
@@ -115,10 +118,20 @@ export function PairView({
           className={`sticky-bar__verdict ${passes("aa-text") ? "is-pass" : "is-fail"}`}
           aria-hidden="true"
         >
-          {passes("aa-text") ? "✓ AA body" : "✕ AA body"}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            {passes("aa-text") ? (
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            ) : (
+              <path d="M6 6l12 12M18 6L6 18" />
+            )}
+          </svg>
+          AA body
         </span>
         <button type="button" className="btn btn--quiet btn--small" onClick={onSwap}>
-          ⇅ Swap
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 4v16M7 4L3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" />
+          </svg>
+          Swap
         </button>
       </div>
 
@@ -258,8 +271,8 @@ export function PairView({
             onKind={(k) => setTarget(k === "text" ? "aa-text" : "non-text")}
             onPalette={onPalette}
             onPair={(t, b) => {
-              onText(t);
-              onBackground(b);
+              onText(inFormat(t));
+              onBackground(inFormat(b));
             }}
             onColor={pick}
           />
