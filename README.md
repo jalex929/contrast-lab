@@ -6,6 +6,11 @@ Check a text color and a background against the WCAG 2.2 contrast rules, see the
 the **nearest colors that pass** instead of just a fail. Or check a whole palette at once and
 see every pair that works. Free, no sign-up, nothing leaves your browser.
 
+It replaces a three-tool routine: an image color picker to get values out of a design, a
+contrast checker for one pair, and a palette checker for the set. Here you pick or box colors
+in a screenshot, get the nearest fix (for AA, and the step up to AAA), and fill a palette
+straight from a screenshot of one.
+
 Try it at [jayfox.design/lab/contrast-lab](https://jayfox.design/lab/contrast-lab/). Why it's
 built the way it is, and who decided what: [DECISIONS.md](DECISIONS.md).
 
@@ -79,7 +84,7 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
 
 ## Tested
 
-- **75 unit tests** (Vitest): contrast ratios against reference values computed separately in
+- **79 unit tests** (Vitest): contrast ratios against reference values computed separately in
   Python from the WCAG formula; no rounding at thresholds (#777777 on white fails at 4.478,
   #767676 passes at 4.542); transparent text; parsing every supported format and a plain
   message for each kind of mistake; OKLCH round trips; every suggestion re-checked from its hex
@@ -88,7 +93,7 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
   text on dark, a backwards box); palette extraction (main colors of a noisy image in
   order, the same answer every time, specks dropped, a cap on count) and box colors;
   recent colors.
-- **47 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
+- **55 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
   site): no page errors, using a suggestion fixes the pair, typos explain themselves, swap,
   links reopen a check (including a link pasted into the same tab), the palette grid and
   opening a cell, arrow keys on the tabs, nothing wider than the screen, control sizes; the photo
