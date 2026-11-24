@@ -255,6 +255,14 @@ paste), except typing: keystrokes that grow or shrink the same field within a se
 fold into one step, so one undo takes back a whole typed color. The first version waited for a
 pause before recording, which merged quick actions into one step; a test caught it.
 
+**Medium widths keep the colors beside the preview** (Jay's call, 2026-11-24: "I don't want to
+scroll to choose colors"). Three layouts now: wide (980px and up) with the sidebar; medium
+(640-979px, a tablet or a narrowed window) with Foreground, Swap and Background right beside the
+preview, the checks and fixes below; phones (under 640px) stacked with the sticky bar. The color
+panel moves in the page order itself, so keyboard order matches what's on screen. A browser test
+checks at 700, 820 and 960px that the colors sit right of the preview and in view without
+scrolling.
+
 ## Left out on purpose
 
 - APCA and other contrast models (see above).

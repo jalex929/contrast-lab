@@ -1769,6 +1769,23 @@ svg {
   gap: 6px;
 }
 
+/* Medium widths: the preview and the colors side by side, so colors change without scrolling. */
+.duo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.duo .canvas {
+  min-height: 0;
+  padding: 22px;
+}
+
+.duo .wells {
+  align-content: start;
+}
+
 /* ---------- Footer ---------- */
 
 .foot {
@@ -1785,6 +1802,12 @@ svg {
 }
 
 /* ---------- Narrower screens ---------- */
+
+@media (min-width: 640px) and (max-width: 979px) {
+  .pair .sticky-bar {
+    display: none !important;
+  }
+}
 
 @media (max-width: 979px) {
   .pair,

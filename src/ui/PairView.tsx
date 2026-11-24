@@ -14,22 +14,26 @@ import { ColorField } from "./ColorField";
 import { PhotoPicker } from "./PhotoPicker";
 import { action } from "../telemetry";
 
-/** True while the layout is a single column (the CSS breakpoint for the stacked layout). */
-function useNarrow(): boolean {
-  const query = "(max-width: 979px)";
-  const [narrow, setNarrow] = useState(
+/** True while a media query matches (and updates when the window is resized). */
+function useMedia(query: string): boolean {
+  const [on, setOn] = useState(
     () => typeof window !== "undefined" && window.matchMedia?.(query).matches === true,
   );
   useEffect(() => {
     const mq = window.matchMedia?.(query);
     if (!mq) return;
-    const sync = () => setNarrow(mq.matches);
+    const sync = () => setOn(mq.matches);
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
-  }, []);
-  return narrow;
+  }, [query]);
+  return on;
 }
+
+/** Below the wide layout: no sidebar (the CSS breakpoint is the same). */
+const NARROW = "(max-width: 979px)";
+/** Medium: no sidebar, but room for the colors beside the preview. */
+const MEDIUM = "(min-width: 640px) and (max-width: 979px)";
 
 /** Keeps the last color that could be read, so a half-typed value doesn't blank the page. */
 function useLastGood(text: string, fallback: Rgb): Rgb {
@@ -84,7 +88,8 @@ export function PairView({
   const [target, setTarget] = useState<CriterionId>("aa-text");
   const [preview, setPreview] = useState<{ target: Target; hex: string } | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
-  const narrow = useNarrow();
+  const narrow = useMedia(NARROW);
+  const medium = useMedia(MEDIUM);
   const [recentTarget, setRecentTarget] = useState<Target>("text");
   const goal = criterion(target);
 
@@ -321,6 +326,37 @@ export function PairView({
     </section>
   );
 
+  const wells = (
+    <div className="wells">
+      <ColorField
+        label="Foreground"
+        value={text}
+        onChange={onText}
+        hint="Text, an icon or a border."
+        fallback={fgHex}
+      />
+      <button
+        type="button"
+        className="swap"
+        onClick={() => onSwap("button")}
+        title="Swap foreground and background · shortcut: X"
+        aria-keyshortcuts="x"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 4v16M7 4L3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" />
+        </svg>
+        Swap
+      </button>
+      <ColorField
+        label="Background"
+        value={background}
+        onChange={onBackground}
+        fallback={bgHex}
+        hint={bg.a < 1 ? "Backgrounds are measured as opaque." : undefined}
+      />
+    </div>
+  );
+
   return (
     <div className="pair">
       {/* Phones: the two colors, the ratio and swap stay in view while scrolling. */}
@@ -399,34 +435,68 @@ export function PairView({
           </label>
         </div>
 
-        <div className="canvas" style={{ background: canvasBg, color: canvasFg }}>
-          {preview && (
-            <span className="canvas__badge">
-              Previewing {preview.hex} as the{" "}
-              {preview.target === "text" ? "foreground" : "background"} · click to keep
-            </span>
-          )}
-          <p className="canvas__sample" aria-hidden="true">
-            Aa
-          </p>
-          <p className="canvas__large">Large heading text</p>
-          <p className="canvas__body">
-            Body text at 16px, the size most reading happens at. This is what a paragraph looks like
-            in these colors.
-          </p>
-          <div className="canvas__controls">
-            <span className="canvas__button" style={{ background: canvasFg, color: canvasBg }}>
-              Button
-            </span>
-            <span className="canvas__outline" style={{ borderColor: canvasFg }}>
-              Outlined button
-            </span>
-            <svg viewBox="0 0 24 24" className="canvas__icon" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 8v5M12 16.5v.5" />
-            </svg>
+        {medium ? (
+          <div className="duo">
+            <div className="canvas" style={{ background: canvasBg, color: canvasFg }}>
+              {preview && (
+                <span className="canvas__badge">
+                  Previewing {preview.hex} as the{" "}
+                  {preview.target === "text" ? "foreground" : "background"} · click to keep
+                </span>
+              )}
+              <p className="canvas__sample" aria-hidden="true">
+                Aa
+              </p>
+              <p className="canvas__large">Large heading text</p>
+              <p className="canvas__body">
+                Body text at 16px, the size most reading happens at. This is what a paragraph looks
+                like in these colors.
+              </p>
+              <div className="canvas__controls">
+                <span className="canvas__button" style={{ background: canvasFg, color: canvasBg }}>
+                  Button
+                </span>
+                <span className="canvas__outline" style={{ borderColor: canvasFg }}>
+                  Outlined button
+                </span>
+                <svg viewBox="0 0 24 24" className="canvas__icon" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 8v5M12 16.5v.5" />
+                </svg>
+              </div>
+            </div>
+            {wells}
           </div>
-        </div>
+        ) : (
+          <div className="canvas" style={{ background: canvasBg, color: canvasFg }}>
+            {preview && (
+              <span className="canvas__badge">
+                Previewing {preview.hex} as the{" "}
+                {preview.target === "text" ? "foreground" : "background"} · click to keep
+              </span>
+            )}
+            <p className="canvas__sample" aria-hidden="true">
+              Aa
+            </p>
+            <p className="canvas__large">Large heading text</p>
+            <p className="canvas__body">
+              Body text at 16px, the size most reading happens at. This is what a paragraph looks
+              like in these colors.
+            </p>
+            <div className="canvas__controls">
+              <span className="canvas__button" style={{ background: canvasFg, color: canvasBg }}>
+                Button
+              </span>
+              <span className="canvas__outline" style={{ borderColor: canvasFg }}>
+                Outlined button
+              </span>
+              <svg viewBox="0 0 24 24" className="canvas__icon" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8v5M12 16.5v.5" />
+              </svg>
+            </div>
+          </div>
+        )}
 
         <div className="levels">
           {(["AA", "AAA"] as const).map((level) => (
@@ -502,34 +572,7 @@ export function PairView({
       </section>
 
       <aside className="side" aria-label="Colors and fixes">
-        <div className="wells">
-          <ColorField
-            label="Foreground"
-            value={text}
-            onChange={onText}
-            hint="Text, an icon or a border."
-            fallback={fgHex}
-          />
-          <button
-            type="button"
-            className="swap"
-            onClick={() => onSwap("button")}
-            title="Swap foreground and background · shortcut: X"
-            aria-keyshortcuts="x"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 4v16M7 4L3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" />
-            </svg>
-            Swap
-          </button>
-          <ColorField
-            label="Background"
-            value={background}
-            onChange={onBackground}
-            fallback={bgHex}
-            hint={bg.a < 1 ? "Backgrounds are measured as opaque." : undefined}
-          />
-        </div>
+        {!medium && wells}
 
         <details
           className="panel-block photo-drawer"

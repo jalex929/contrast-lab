@@ -396,3 +396,23 @@ test("typing a color is one undo step, not one per key", async ({ page }) => {
   await page.keyboard.press("Control+z");
   await expect(fg).toHaveValue("#777777");
 });
+
+test("at medium widths the colors sit beside the preview, no scrolling needed", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "a resized desktop window");
+  for (const width of [700, 820, 960]) {
+    await page.setViewportSize({ width, height: 800 });
+    const canvas = (await page.locator(".canvas").boundingBox())!;
+    const field = (await page
+      .getByRole("textbox", { name: "Background", exact: true })
+      .boundingBox())!;
+    expect(field.x).toBeGreaterThan(canvas.x + canvas.width - 4); // to the right of the preview
+    expect(field.y + field.height).toBeLessThan(800); // in view without scrolling
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+});
