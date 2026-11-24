@@ -88,7 +88,7 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
   text on dark, a backwards box); palette extraction (main colors of a noisy image in
   order, the same answer every time, specks dropped, a cap on count) and box colors;
   recent colors.
-- **45 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
+- **47 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
   site): no page errors, using a suggestion fixes the pair, typos explain themselves, swap,
   links reopen a check (including a link pasted into the same tab), the palette grid and
   opening a cell, arrow keys on the tabs, nothing wider than the screen, control sizes; the photo

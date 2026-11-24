@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { parseColor, quantize, toHex, type Rgb } from "../engine/color";
 import {
   CRITERIA,
@@ -13,6 +13,23 @@ import { Chip, type Target } from "./Chip";
 import { ColorField } from "./ColorField";
 import { PhotoPicker } from "./PhotoPicker";
 import { action } from "../telemetry";
+
+/** True while the layout is a single column (the CSS breakpoint for the stacked layout). */
+function useNarrow(): boolean {
+  const query = "(max-width: 979px)";
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== "undefined" && window.matchMedia?.(query).matches === true,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia?.(query);
+    if (!mq) return;
+    const sync = () => setNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return narrow;
+}
 
 /** Keeps the last color that could be read, so a half-typed value doesn't blank the page. */
 function useLastGood(text: string, fallback: Rgb): Rgb {
@@ -67,6 +84,7 @@ export function PairView({
   const [target, setTarget] = useState<CriterionId>("aa-text");
   const [preview, setPreview] = useState<{ target: Target; hex: string } | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const narrow = useNarrow();
   const [recentTarget, setRecentTarget] = useState<Target>("text");
   const goal = criterion(target);
 
@@ -100,6 +118,74 @@ export function PairView({
   const canvasFg = hexOf(showFg);
   const canvasBg = hexOf({ ...showBg, a: 1 });
   const passes = (id: CriterionId) => shown.checks.find((c) => c.criterion.id === id)!.pass;
+
+  const fixPanel = (
+    <section className="panel-block" aria-labelledby="fix-heading">
+      <div className="panel-block__head">
+        <h2 id="fix-heading">Nearest passing colors</h2>
+        <label className="aim">
+          <span className="visually-hidden">Aim for</span>
+          <select
+            value={target}
+            onChange={(e) => {
+              setTarget(e.target.value as CriterionId);
+              action("aim_change", { aim: e.target.value });
+            }}
+          >
+            {TARGETS.map((id) => {
+              const c = criterion(id);
+              return (
+                <option key={id} value={id}>
+                  {SHORT[id]} {c.level} · {c.min}:1
+                </option>
+              );
+            })}
+          </select>
+        </label>
+      </div>
+      {!suggestions ? (
+        <p className="fix-ok">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+          Passes {SHORT[target].toLowerCase()} {goal.level}. Nothing to fix.
+        </p>
+      ) : (
+        <>
+          <FixGroup
+            title="Foreground"
+            items={suggestions.text}
+            target="text"
+            empty={
+              fg.a < 1
+                ? `At ${Math.round(fg.a * 100)}% opacity no text color reaches ${goal.min}:1. Raise the opacity or change the background.`
+                : `No text color reaches ${goal.min}:1 here (most possible: ${formatRatio(bestPossible({ ...bg, a: 1 }))}:1). Change the background.`
+            }
+            onPick={(t, h) => {
+              action("use_fix", { side: t, aim: target });
+              pick(t, h);
+            }}
+            onPreview={setPreview}
+          />
+          <FixGroup
+            title="Background"
+            items={suggestions.background}
+            target="background"
+            empty={`No background reaches ${goal.min}:1 with this text color.`}
+            onPick={(t, h) => {
+              action("use_fix", { side: t, aim: target });
+              pick(t, h);
+            }}
+            onPreview={setPreview}
+          />
+        </>
+      )}
+      <p className="hint">
+        Same hue, lightness moved as little as possible.
+        <span className="hover-only"> Hover to preview.</span>
+      </p>
+    </section>
+  );
 
   return (
     <div className="pair">
@@ -196,6 +282,8 @@ export function PairView({
           ))}
         </ul>
 
+        {narrow && fixPanel}
+
         <details
           className="math"
           onToggle={(e) => {
@@ -284,71 +372,7 @@ export function PairView({
           />
         </details>
 
-        <section className="panel-block" aria-labelledby="fix-heading">
-          <div className="panel-block__head">
-            <h2 id="fix-heading">Nearest passing colors</h2>
-            <label className="aim">
-              <span className="visually-hidden">Aim for</span>
-              <select
-                value={target}
-                onChange={(e) => {
-                  setTarget(e.target.value as CriterionId);
-                  action("aim_change", { aim: e.target.value });
-                }}
-              >
-                {TARGETS.map((id) => {
-                  const c = criterion(id);
-                  return (
-                    <option key={id} value={id}>
-                      {SHORT[id]} {c.level} · {c.min}:1
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-          </div>
-          {!suggestions ? (
-            <p className="fix-ok">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-              Passes {SHORT[target].toLowerCase()} {goal.level}. Nothing to fix.
-            </p>
-          ) : (
-            <>
-              <FixGroup
-                title="Foreground"
-                items={suggestions.text}
-                target="text"
-                empty={
-                  fg.a < 1
-                    ? `At ${Math.round(fg.a * 100)}% opacity no text color reaches ${goal.min}:1. Raise the opacity or change the background.`
-                    : `No text color reaches ${goal.min}:1 here (most possible: ${formatRatio(bestPossible({ ...bg, a: 1 }))}:1). Change the background.`
-                }
-                onPick={(t, h) => {
-                  action("use_fix", { side: t, aim: target });
-                  pick(t, h);
-                }}
-                onPreview={setPreview}
-              />
-              <FixGroup
-                title="Background"
-                items={suggestions.background}
-                target="background"
-                empty={`No background reaches ${goal.min}:1 with this text color.`}
-                onPick={(t, h) => {
-                  action("use_fix", { side: t, aim: target });
-                  pick(t, h);
-                }}
-                onPreview={setPreview}
-              />
-            </>
-          )}
-          <p className="hint">
-            Same hue, lightness moved as little as possible.
-            <span className="hover-only"> Hover to preview.</span>
-          </p>
-        </section>
+        {!narrow && fixPanel}
 
         <section className="panel-block" aria-labelledby="recent-heading">
           <div className="panel-block__head">

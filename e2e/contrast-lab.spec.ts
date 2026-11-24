@@ -309,3 +309,20 @@ test("switching value formats converts the colors and keeps the result", async (
   );
   await expect(page.locator(".canvas__ratio")).toHaveText("4.54:1");
 });
+
+test("on narrow screens the fixes sit right under the preview and its checks", async ({
+  page,
+  isMobile,
+}) => {
+  const fixes = page.getByRole("heading", { name: "Nearest passing colors" });
+  const checks = page.locator(".stage .checks");
+  const field = page.getByRole("textbox", { name: "Foreground", exact: true });
+  const y = async (l: import("@playwright/test").Locator) => (await l.boundingBox())!.y;
+  if (isMobile) {
+    expect(await y(fixes)).toBeGreaterThan(await y(checks));
+    expect(await y(fixes)).toBeLessThan(await y(field));
+  } else {
+    // Wide screens: beside the preview, in the sidebar under the colors.
+    expect(await y(fixes)).toBeGreaterThan(await y(field));
+  }
+});

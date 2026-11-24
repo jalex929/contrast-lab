@@ -202,6 +202,13 @@ added there and the receiver is redeployed.
 **Lab labels for tools** (proposed, approved pending Jay's word). On the Lab page, tools say
 "Ready to use" and "Open", games and toys keep "Playable" and "Play".
 
+**On narrow screens the fixes follow the preview** (Jay's call, 2026-11-24: "nearest passing
+colors needs to be closer to the reference when the containers stack"). When the layout is one
+column, "Nearest passing colors" moves directly under the preview and its pass/fail chips, so a
+failing result and its fix sit together and Use changes the preview just above. It moves in the
+page order itself (not only visually), so keyboard and screen-reader order match what's seen.
+Wide screens keep it in the sidebar beside the preview.
+
 ## Left out on purpose
 
 - APCA and other contrast models (see above).
