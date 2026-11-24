@@ -1,3 +1,4 @@
+/* global localStorage */
 // Builds public/og-image.png (1200x630): the title and three features on the left, and a real
 // screenshot of the app on the right (a failing pair with the nearest fix being previewed), so
 // the share image always shows the actual interface.
