@@ -11,7 +11,7 @@ import { resolve } from "node:path";
 const APP = process.argv[2] ?? "http://localhost:4195/";
 const browser = await chromium.launch();
 
-// 1. The app: a coral on white fails body text; hover the nearest fix to preview it.
+// 1. The app: a coral on white fails body text, with the best fix offered beside it.
 const app = await browser.newPage({ viewport: { width: 1060, height: 760 }, deviceScaleFactor: 2 });
 await app.addInitScript(() => {
   localStorage.setItem(
@@ -30,7 +30,6 @@ await app.addInitScript(() => {
   localStorage.setItem("contrast-lab:format", "hex");
 });
 await app.goto(`${APP}#pair=f0605d,ffffff`, { waitUntil: "networkidle" });
-await app.locator(".fix__row").first().hover();
 await app.waitForTimeout(300);
 const pair = await app.locator(".pair").boundingBox();
 await app.screenshot({

@@ -1,6 +1,6 @@
 # Contrast Lab
 
-![Contrast Lab: a coral text color on white, with the nearest passing shade previewed at 4.51:1 and the fixes panel beside it](public/og-image.png)
+![Contrast Lab: a coral text color on white fails body text at 3.21 to 1, with the best fix, #d24445 at 4.51 to 1, offered beside it.](public/og-image.png)
 
 Check a text color and a background against the WCAG 2.2 contrast rules, see the math, and get
 the **nearest colors that pass** instead of just a fail. Or check a whole palette at once and
@@ -95,7 +95,7 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
   text on dark, a backwards box); palette extraction (main colors of a noisy image in
   order, the same answer every time, specks dropped, a cap on count) and box colors;
   recent colors.
-- **63 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
+- **73 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
   site): no page errors, using a suggestion fixes the pair, typos explain themselves, swap,
   links reopen a check (including a link pasted into the same tab), the palette grid and
   opening a cell, arrow keys on the tabs, nothing wider than the screen, control sizes; the photo
@@ -105,6 +105,11 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
 - **Its own colors:** every text and control color in the interface was run through the engine
   and passes AA.
 - **Looked at** in screenshots at 1440×900 and on a Pixel 7 size, both modes.
+
+- **Automated accessibility audit** (axe-core, WCAG 2.2 A/AA rules) of the pair checker
+  (failing and passing), the palette (full and empty) and the photo workspace, on desktop and
+  phone: no violations. The preview and swatches showing the person's own colors are excluded,
+  since their contrast is the subject, not a defect.
 
 ## Not tested yet
 
