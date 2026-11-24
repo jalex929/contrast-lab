@@ -139,6 +139,36 @@ passes AA (the lowest is 4.40:1, a control border that needs 3:1).
 - **Hover (or focus) to preview:** the canvas shows the color before you commit, with a
   "Previewing" badge. Screen readers hear committed changes only, not every preview.
 
+## Third pass: busy photos, a photo palette and non-text contrast (2026-11-24)
+
+Jay tried a "Where's Waldo" screenshot and raised three things: choosing colors from a busy
+image, wanting a palette from the photo (like the "palette from image" tools), and checking
+non-text contrast, not just text.
+
+**A large photo workspace** (proposed, approved). Opening an image now shows it in a near
+full-screen dialog instead of the narrow sidebar, with zoom (100% to 600%), and the live result
+(both colors, the ratio, pass or fail) beside it so you see the outcome while picking. It's a
+real modal dialog: focus moves in, Escape closes (or cancels a box in progress first). A Move
+tool pans when zoomed, which phones need because dragging otherwise draws a box.
+
+**Box an area, not just text** (Jay: "drag a box around some text seems narrow"). The box tool
+asks what's in it: **Text** or **Icon or border**. Detection is the same either way; the result
+is judged at 4.5:1 for text and 3:1 for icons and borders (SC 1.4.11), and choosing Icon or
+border also points the fixes at 3:1. The main color field is now called **Foreground**, with
+"Text, an icon or a border" under it.
+
+**Show what's in the box** (build default). On a busy image the automatic guess can be wrong,
+so after every box the main colors inside it are listed as swatches you can click to correct
+the foreground or background. The status line warns when a box looks busy (the background is
+under 40% of it, or it holds more than five colors).
+
+**A palette from the photo** (Jay's call). The photo's main colors (up to 8) are found with
+k-means clustering in OKLab, so a group is what eyes see as one color, starting from spread-out
+seeds chosen the same way every time (the same image always gives the same palette); look-alike
+groups merge and specks under 1% are dropped. Each swatch can be clicked or dragged onto a color,
+and "Check these as a palette" opens them all in palette mode to see every pair. About 0.4
+seconds on a busy 1600x1000 image, run once after the image loads.
+
 ## Left out on purpose
 
 - APCA and other contrast models (see above).

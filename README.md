@@ -25,9 +25,11 @@ built the way it is, and who decided what: [DECISIONS.md](DECISIONS.md).
 - **Check a palette.** Up to 8 colors; a grid of every color as text on every other color, each
   cell drawn in its real colors, plus the list of pairs that pass. Any cell opens in the pair
   checker.
-- **Pick from a photo.** Paste, drop or choose an image (it stays on the device), then drag a
-  box around some text to find its text and background colors, or click colors one at a time
-  with a magnifier. Keyboard works too.
+- **Pick from a photo.** Paste, drop or choose an image (it stays on the device). It opens
+  large, with zoom and the live result beside it. Box a word, an icon or a border to find its
+  foreground and background (judged at 4.5:1 for text or 3:1 for icons and borders), correct a
+  wrong guess from the colors found in the box, or click colors with a magnifier. The photo's
+  main colors become a palette you can use or check all at once. Keyboard works too.
 - **Try colors fast.** The result is a live canvas painted in your colors. Hover a fix or a
   recent color to preview it; click to keep. Press X to swap. Drag swatches onto either color.
   Recent colors are kept in the browser. The swatch opens the color picker, and in Chrome and
@@ -46,7 +48,9 @@ built the way it is, and who decided what: [DECISIONS.md](DECISIONS.md).
   color until it finds a passing shade, then halves the gap to land right at the edge
   (about 1.7 ms per search on a laptop, so it runs live while you type or drag the picker).
 - `palette.ts` and `share.ts`: the pair grid and the link format.
-- `sample.ts`: reading a photo, including finding a text color and its background inside a box.
+- `sample.ts`: reading a photo, including finding a foreground and background inside a box.
+- `palette-extract.ts`: a photo's main colors (k-means in OKLab, same result every time) and
+  the colors inside a box.
 - `recent.ts`: the recent-colors list.
 
 `src/ui/` and `src/App.tsx` are the thin React interface.
@@ -65,18 +69,21 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
 
 ## Tested
 
-- **56 unit tests** (Vitest): contrast ratios against reference values computed separately in
+- **62 unit tests** (Vitest): contrast ratios against reference values computed separately in
   Python from the WCAG formula; no rounding at thresholds (#777777 on white fails at 4.478,
   #767676 passes at 4.542); transparent text; parsing every supported format and a plain
   message for each kind of mistake; OKLCH round trips; every suggestion re-checked from its hex
   code; hue kept; "nothing passes" cases; palette grid and share links; photo sampling (exact
   pixel, edges, opacity-weighted averages, text found despite an anti-aliased fringe, light
-  text on dark, a backwards box); recent colors.
-- **31 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
+  text on dark, a backwards box); palette extraction (main colors of a noisy image in
+  order, the same answer every time, specks dropped, a cap on count) and box colors;
+  recent colors.
+- **37 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
   site): no page errors, using a suggestion fixes the pair, typos explain themselves, swap,
   links reopen a check (including a link pasted into the same tab), the palette grid and
-  opening a cell, arrow keys on the tabs, nothing wider than the screen, control sizes; a box
-  around text in a real image, click-to-pick, the photo picker by keyboard; X to swap (and not
+  opening a cell, arrow keys on the tabs, nothing wider than the screen, control sizes; the photo
+  workspace (a box over text in a real image, icon-or-border mode at 3:1, click-to-pick, zoom,
+  the photo palette into palette mode, the keyboard path); X to swap (and not
   while typing); recent colors by click, Shift+click and the applies-to toggle; hover preview.
 - **Its own colors:** every text and control color in the interface was run through the engine
   and passes AA.

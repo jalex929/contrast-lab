@@ -43,8 +43,8 @@ export function Chip({
   const targetFor = (shift: boolean): Target => fixedTarget ?? (shift ? other : defaultTarget);
 
   const hint = fixedTarget
-    ? `Click to use as the ${fixedTarget === "text" ? "text color" : "background"}`
-    : `Click: ${defaultTarget === "text" ? "text color" : "background"} · Shift+click: ${other === "text" ? "text color" : "background"} · or drag onto a color`;
+    ? `Click to use as the ${fixedTarget === "text" ? "foreground" : "background"}`
+    : `Click: ${defaultTarget === "text" ? "foreground" : "background"} · Shift+click: ${other === "text" ? "foreground" : "background"} · or drag onto a color`;
 
   return (
     <button
@@ -52,7 +52,7 @@ export function Chip({
       className={`chip chip--${size}`}
       style={{ background: hex }}
       title={`${hex} · ${hint}`}
-      aria-label={`${label}. ${fixedTarget ? "" : `Enter sets the ${defaultTarget === "text" ? "text color" : "background"}, Shift+Enter the ${other === "text" ? "text color" : "background"}.`}`}
+      aria-label={`${label}. ${fixedTarget ? "" : `Enter sets the ${defaultTarget === "text" ? "foreground" : "background"}, Shift+Enter the ${other === "text" ? "foreground" : "background"}.`}`}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData(COLOR_MIME, hex);

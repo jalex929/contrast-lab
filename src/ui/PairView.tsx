@@ -47,6 +47,7 @@ export function PairView({
   onBackground,
   onSwap,
   recent,
+  onPalette,
 }: {
   text: string;
   background: string;
@@ -54,6 +55,8 @@ export function PairView({
   onBackground: (v: string) => void;
   onSwap: () => void;
   recent: string[];
+  /** Open these colors in palette mode. */
+  onPalette: (hexes: string[]) => void;
 }) {
   const fg = useLastGood(text, { r: 119, g: 119, b: 119, a: 1 });
   const bg = useLastGood(background, { r: 255, g: 255, b: 255, a: 1 });
@@ -131,8 +134,8 @@ export function PairView({
         <div className="canvas" style={{ background: canvasBg, color: canvasFg }}>
           {preview && (
             <span className="canvas__badge">
-              Previewing {preview.hex} as the {preview.target === "text" ? "text" : "background"} ·
-              click to keep
+              Previewing {preview.hex} as the{" "}
+              {preview.target === "text" ? "foreground" : "background"} · click to keep
             </span>
           )}
           <p className="canvas__ratio" aria-hidden="true">
@@ -215,17 +218,22 @@ export function PairView({
 
       <aside className="side" aria-label="Colors and fixes">
         <div className="wells">
-          <ColorField label="Text color" value={text} onChange={onText} />
+          <ColorField
+            label="Foreground"
+            value={text}
+            onChange={onText}
+            hint="Text, an icon or a border."
+          />
           <button
             type="button"
             className="swap"
             onClick={onSwap}
-            title="Swap text and background (X)"
+            title="Swap foreground and background (X)"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M7 4v16M7 4L3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" />
             </svg>
-            Swap text and background <kbd aria-hidden="true">X</kbd>
+            Swap colors <kbd aria-hidden="true">X</kbd>
           </button>
           <ColorField
             label="Background"
@@ -244,7 +252,11 @@ export function PairView({
             Pick from a photo <span className="hint">paste, drop or choose</span>
           </summary>
           <PhotoPicker
+            text={text}
+            background={background}
             onImage={() => setPhotoOpen(true)}
+            onKind={(k) => setTarget(k === "text" ? "aa-text" : "non-text")}
+            onPalette={onPalette}
             onPair={(t, b) => {
               onText(t);
               onBackground(b);
@@ -280,7 +292,7 @@ export function PairView({
           ) : (
             <>
               <FixGroup
-                title="Text"
+                title="Foreground"
                 items={suggestions.text}
                 target="text"
                 empty={
@@ -314,7 +326,7 @@ export function PairView({
               <legend className="visually-hidden">Recent colors apply to</legend>
               {(
                 [
-                  ["text", "Text"],
+                  ["text", "Foreground"],
                   ["background", "Background"],
                 ] as const
               ).map(([id, lbl]) => (
@@ -348,10 +360,10 @@ export function PairView({
                 ))}
               </ul>
               <p className="hint">
-                Sets the {recentTarget === "text" ? "text color" : "background"}.
+                Sets the {recentTarget === "text" ? "foreground" : "background"}.
                 <span className="hover-only">
                   {" "}
-                  Shift+click for the {recentTarget === "text" ? "background" : "text color"}, or
+                  Shift+click for the {recentTarget === "text" ? "background" : "foreground"}, or
                   drag onto a color.
                 </span>
               </p>

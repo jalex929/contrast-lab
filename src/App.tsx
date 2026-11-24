@@ -212,6 +212,10 @@ export function App() {
             onBackground={setBackground}
             onSwap={swap}
             recent={recent}
+            onPalette={(hexes) => {
+              setPalette(hexes.map(newEntry));
+              setMode("palette");
+            }}
           />
         ) : (
           <PaletteView entries={palette} onChange={setPalette} onCheckPair={openPair} />
