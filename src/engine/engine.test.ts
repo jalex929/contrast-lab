@@ -10,6 +10,7 @@ import {
 } from "./color";
 import { contrastRatio, criterion, evaluate, formatRatio, luminance } from "./contrast";
 import { paletteGrid, passingPairs, type Swatch } from "./palette";
+import { sampleAt, sampleTextPair } from "./sample";
 import { decodeShare, encodeShare } from "./share";
 import { bestPossible, nearestPassing } from "./suggest";
 
@@ -262,5 +263,98 @@ describe("share links", () => {
       mode: "palette",
       colors: ["#000052", "#ffffff"],
     });
+  });
+});
+
+describe("sampling a photo", () => {
+  // A 3x3 image: a red row, a green row, a blue row; the middle-right pixel is half transparent.
+  const px = (r: number, g: number, b: number, a = 255) => [r, g, b, a];
+  const img = {
+    width: 3,
+    height: 3,
+    data: new Uint8ClampedArray([
+      ...px(255, 0, 0),
+      ...px(255, 0, 0),
+      ...px(255, 0, 0),
+      ...px(0, 255, 0),
+      ...px(0, 255, 0),
+      ...px(0, 0, 0, 128),
+      ...px(0, 0, 255),
+      ...px(0, 0, 255),
+      ...px(0, 0, 255),
+    ]),
+  };
+
+  it("reads the exact pixel", () => {
+    expect(sampleAt(img, 0, 0)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+    expect(sampleAt(img, 1.7, 2.2)).toEqual({ r: 0, g: 0, b: 255, a: 1 });
+  });
+
+  it("clamps points outside the image to the nearest edge", () => {
+    expect(sampleAt(img, -5, -5)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+    expect(sampleAt(img, 99, 99)).toEqual({ r: 0, g: 0, b: 255, a: 1 });
+  });
+
+  it("averages a square, weighting by opacity", () => {
+    const c = sampleAt(img, 0, 1, 3); // left two columns of all rows (clipped at the edge)
+    expect(c.r).toBeCloseTo(255 / 3, 10);
+    expect(c.g).toBeCloseTo(255 / 3, 10);
+    expect(c.b).toBeCloseTo(255 / 3, 10);
+    expect(c.a).toBe(1);
+    const all = sampleAt(img, 1, 1, 3);
+    expect(all.a).toBeCloseTo((8 + 128 / 255) / 9, 10);
+  });
+
+  it("a fully transparent spot is transparent", () => {
+    const clear = { width: 1, height: 1, data: new Uint8ClampedArray([10, 20, 30, 0]) };
+    expect(sampleAt(clear, 0, 0).a).toBe(0);
+  });
+});
+
+describe("sampling text from a photo", () => {
+  /** A white 40x20 box with a navy bar of "text", anti-aliased by a grey fringe. */
+  function textImage(text: number[], bg: number[], fringe = true) {
+    const w = 40;
+    const h = 20;
+    const data = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const inText = y >= 8 && y < 12 && x >= 5 && x < 35;
+        const edge = fringe && (y === 7 || y === 12) && x >= 5 && x < 35;
+        const c = inText ? text : edge ? text.map((v, k) => (v + bg[k]!) / 2) : bg;
+        data.set([c[0]!, c[1]!, c[2]!, 255], i);
+      }
+    }
+    return { width: w, height: h, data };
+  }
+
+  it("finds navy text on white, ignoring the anti-aliased fringe", () => {
+    const pair = sampleTextPair(textImage([0, 0, 82], [255, 255, 255]), {
+      x: 0,
+      y: 0,
+      width: 40,
+      height: 20,
+    });
+    expect(pair).not.toBeNull();
+    expect(toHex(quantize(pair!.background))).toBe("#ffffff");
+    expect(toHex(quantize(pair!.text))).toBe("#000052");
+    expect(pair!.backgroundShare).toBeGreaterThan(0.7);
+  });
+
+  it("works for light text on a dark background, and a box drawn backwards", () => {
+    const pair = sampleTextPair(textImage([255, 223, 63], [0, 0, 82]), {
+      x: 40,
+      y: 20,
+      width: -40,
+      height: -20,
+    });
+    expect(toHex(quantize(pair!.text))).toBe("#ffdf3f");
+    expect(toHex(quantize(pair!.background))).toBe("#000052");
+  });
+
+  it("has nothing to say about a single flat color", () => {
+    const flat = textImage([9, 9, 9], [9, 9, 9], false);
+    expect(sampleTextPair(flat, { x: 0, y: 0, width: 40, height: 20 })).toBeNull();
   });
 });

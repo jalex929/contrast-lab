@@ -3,6 +3,7 @@ import { parseColor, quantize, toHex, type Rgb } from "../engine/color";
 import { criterion, evaluate, formatRatio, luminance, type CriterionId } from "../engine/contrast";
 import { bestPossible, nearestPassing, type Role, type Suggestion } from "../engine/suggest";
 import { ColorField } from "./ColorField";
+import { PhotoPicker } from "./PhotoPicker";
 
 /** Keeps the last color that could be read, so a half-typed value doesn't blank the page. */
 function useLastGood(text: string, fallback: Rgb): Rgb {
@@ -90,6 +91,13 @@ export function PairView({
           </svg>
           Swap text and background
         </button>
+        <PhotoPicker
+          onPair={(t, b) => {
+            onText(t);
+            onBackground(b);
+          }}
+          onColor={(target, hex) => (target === "text" ? onText(hex) : onBackground(hex))}
+        />
       </section>
 
       <section className="pair__result" aria-labelledby="ratio-heading">
