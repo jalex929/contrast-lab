@@ -248,6 +248,13 @@ flat areas (so lettering and soft edges never become colors), keeps near-identic
 and sets aside the color filling the image's border as the page, with an "Add it back" button.
 Tested on a Figma-style board: exactly its six swatches.
 
+**Undo and redo** (Jay's ask, 2026-11-24). Buttons in the top bar, plus Ctrl/Cmd+Z and
+Ctrl/Cmd+Shift+Z (or Ctrl+Y), for both the pair and the palette. Inside a text field those keys
+stay the field's own undo for typing. Every change is its own step (a fix, a swap, a removal, a
+paste), except typing: keystrokes that grow or shrink the same field within a second and a half
+fold into one step, so one undo takes back a whole typed color. The first version waited for a
+pause before recording, which merged quick actions into one step; a test caught it.
+
 ## Left out on purpose
 
 - APCA and other contrast models (see above).

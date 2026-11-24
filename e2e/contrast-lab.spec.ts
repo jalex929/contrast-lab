@@ -358,3 +358,41 @@ test("a half-typed color keeps the last valid one on the swatch and says so", as
   await page.getByRole("textbox", { name: "Foreground", exact: true }).fill("#77z");
   await expect(page.getByText("Still showing the last valid color, #777777.")).toBeVisible();
 });
+
+test("undo and redo step through color changes, by button and by keyboard", async ({ page }) => {
+  const fg = page.getByRole("textbox", { name: "Foreground", exact: true });
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await page.getByRole("button", { name: /^Use this fix/ }).click();
+  await expect(fg).toHaveValue("#767676");
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(fg).toHaveValue("#777777");
+  await expect(page.locator(".result__ratio")).toHaveText("4.47:1");
+  await page.getByRole("button", { name: "Redo" }).click();
+  await expect(fg).toHaveValue("#767676");
+  // Keyboard, outside a text field.
+  await page.locator("h1").click();
+  await page.keyboard.press("x"); // swap
+  await expect(fg).toHaveValue("#ffffff");
+  await page.keyboard.press("Control+z");
+  await expect(fg).toHaveValue("#767676");
+  await page.keyboard.press("Control+Shift+z");
+  await expect(fg).toHaveValue("#ffffff");
+});
+
+test("undo works in the palette too", async ({ page }) => {
+  await page.goto("./#palette=000052,ffdf3f,ffffff");
+  await page.getByRole("button", { name: "Remove color 3" }).click();
+  await expect(page.getByRole("table").getByRole("columnheader")).toHaveCount(2);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("table").getByRole("columnheader")).toHaveCount(3);
+});
+
+test("typing a color is one undo step, not one per key", async ({ page }) => {
+  const fg = page.getByRole("textbox", { name: "Foreground", exact: true });
+  await fg.fill("");
+  await fg.pressSequentially("#123456", { delay: 40 });
+  await expect(page.locator(".result__ratio")).not.toHaveText("4.47:1");
+  await page.locator("h1").click();
+  await page.keyboard.press("Control+z");
+  await expect(fg).toHaveValue("#777777");
+});

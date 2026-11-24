@@ -40,6 +40,8 @@ built the way it is, and who decided what: [DECISIONS.md](DECISIONS.md).
   recent color to preview it; click to keep. Press X to swap. Drag swatches onto either color.
   Recent colors are kept in the browser. The swatch opens the color picker, and in Chrome and
   Edge the eyedropper picks a color from anywhere on screen.
+- **Undo and redo** with buttons or Ctrl/Cmd+Z, for the pair and the palette; a typed color is
+  one step.
 - **Any format.** Show and enter values as HEX, RGB, HSL or OKLCH; switching never changes a
   result. Lists can be comma-separated hex with or without #.
 - **Links.** The address always holds the current check (`#pair=…` or `#palette=…`), so a copied
@@ -84,7 +86,7 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
 
 ## Tested
 
-- **79 unit tests** (Vitest): contrast ratios against reference values computed separately in
+- **86 unit tests** (Vitest): contrast ratios against reference values computed separately in
   Python from the WCAG formula; no rounding at thresholds (#777777 on white fails at 4.478,
   #767676 passes at 4.542); transparent text; parsing every supported format and a plain
   message for each kind of mistake; OKLCH round trips; every suggestion re-checked from its hex
@@ -93,7 +95,7 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
   text on dark, a backwards box); palette extraction (main colors of a noisy image in
   order, the same answer every time, specks dropped, a cap on count) and box colors;
   recent colors.
-- **55 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
+- **61 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
   site): no page errors, using a suggestion fixes the pair, typos explain themselves, swap,
   links reopen a check (including a link pasted into the same tab), the palette grid and
   opening a cell, arrow keys on the tabs, nothing wider than the screen, control sizes; the photo

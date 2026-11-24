@@ -1764,6 +1764,11 @@ svg {
   vertical-align: middle;
 }
 
+.history {
+  display: inline-flex;
+  gap: 6px;
+}
+
 /* ---------- Footer ---------- */
 
 .foot {

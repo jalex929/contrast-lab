@@ -9,6 +9,7 @@ import {
   type Format,
 } from "./engine/color";
 import { evaluate } from "./engine/contrast";
+import { record, redo, startHistory, typingIn, undo, type History } from "./engine/history";
 import { pushRecent, readRecent } from "./engine/recent";
 import { action, arrivedFrom, ratioBand, track } from "./telemetry";
 import { decodeShare, encodeShare, type Shared } from "./engine/share";
@@ -25,6 +26,14 @@ type Mode = "pair" | "palette";
 
 /** Guards the one-per-load open count (React runs startup effects twice in development). */
 let opened = false;
+
+/** What undo and redo bring back: the two pair colors and the palette, as typed. */
+type Snap = { text: string; background: string; palette: string[] };
+const sameSnap = (a: Snap, b: Snap) =>
+  a.text === b.text &&
+  a.background === b.background &&
+  a.palette.length === b.palette.length &&
+  a.palette.every((v, i) => v === b.palette[i]);
 
 const RECENT_KEY = "contrast-lab:recent";
 const FORMAT_KEY = "contrast-lab:format";
@@ -163,6 +172,87 @@ export function App() {
     return () => clearTimeout(timer);
   }, [mode, text, background]);
 
+  // ---------- Undo and redo ----------
+  // A step is recorded once the colors stay put for a moment (typing doesn't make a step per
+  // key); undoing first records whatever is on screen, so a quick change is never lost.
+  const snapshot = (): Snap => ({
+    text,
+    background,
+    palette: palette.map((e) => e.input),
+  });
+  const [history, setHistory] = useState<History<Snap>>(() => startHistory(snapshot()));
+  const historyRef = useRef(history);
+  historyRef.current = history;
+
+  // Each change is its own step, except typing: more keystrokes in the same field within a
+  // moment of the last ones fold into that step, so undo goes back past a whole typed value.
+  const lastTyped = useRef<{ field: number; at: number } | null>(null);
+  useEffect(() => {
+    const h = historyRef.current;
+    const next = snapshot();
+    if (sameSnap(h.present, next)) return;
+    const flat = (x: Snap) => [x.text, x.background, ...x.palette];
+    const field = typingIn(flat(h.present), flat(next));
+    const now = Date.now();
+    const more =
+      field !== null &&
+      lastTyped.current !== null &&
+      lastTyped.current.field === field &&
+      now - lastTyped.current.at < 1500;
+    lastTyped.current = field === null ? null : { field, at: now };
+    const updated = more ? { ...h, present: next } : record(h, next, sameSnap);
+    historyRef.current = updated;
+    setHistory(updated);
+    // snapshot() reads exactly these three.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, background, palette]);
+
+  const restore = (snap: Snap) => {
+    setText(snap.text);
+    setBackground(snap.background);
+    setPalette(snap.palette.map(newEntry));
+  };
+  const stepBack = (how: "button" | "key") => {
+    const h = undo(historyRef.current);
+    if (h === historyRef.current) return;
+    lastTyped.current = null;
+    historyRef.current = h;
+    setHistory(h);
+    restore(h.present);
+    action("undo", { how, mode });
+  };
+  const stepForward = (how: "button" | "key") => {
+    const h = redo(historyRef.current);
+    if (h === historyRef.current) return;
+    lastTyped.current = null;
+    historyRef.current = h;
+    setHistory(h);
+    restore(h.present);
+    action("redo", { how, mode });
+  };
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
+
+  // Ctrl/Cmd+Z undoes, Ctrl/Cmd+Shift+Z or Ctrl+Y redoes; inside a text field they stay the
+  // field's own undo for typing.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k !== "z" && k !== "y") return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA)$/.test(el.tagName))) {
+        const type = (el as HTMLInputElement).type;
+        if (el.tagName === "TEXTAREA" || type === "text") return;
+      }
+      e.preventDefault();
+      if (k === "y" || e.shiftKey) stepForward("key");
+      else stepBack("key");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   // X swaps text and background (as in Figma and Photoshop), unless you're typing.
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -193,7 +283,7 @@ export function App() {
     }
     if (!shared) return;
     const timer = setTimeout(() => {
-      history.replaceState(null, "", encodeShare(shared));
+      window.history.replaceState(null, "", encodeShare(shared));
     }, 250);
     return () => clearTimeout(timer);
   }, [mode, text, background, palette]);
@@ -295,6 +385,36 @@ export function App() {
           ))}
         </div>
         <div className="bar__right">
+          <div className="history" role="group" aria-label="History">
+            <button
+              type="button"
+              className="btn btn--quiet btn--small"
+              onClick={() => stepBack("button")}
+              disabled={!canUndo}
+              title="Undo · Ctrl+Z"
+              aria-keyshortcuts="Control+Z Meta+Z"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 14L4 9l5-5" />
+                <path d="M4 9h10.5a5.5 5.5 0 010 11H11" />
+              </svg>
+              Undo
+            </button>
+            <button
+              type="button"
+              className="btn btn--quiet btn--small"
+              onClick={() => stepForward("button")}
+              disabled={!canRedo}
+              title="Redo · Ctrl+Shift+Z"
+              aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 14l5-5-5-5" />
+                <path d="M20 9H9.5a5.5 5.5 0 000 11H13" />
+              </svg>
+              Redo
+            </button>
+          </div>
           <label className="values-as">
             <span>Values as</span>
             <select value={format} onChange={(e) => changeFormat(e.target.value as Format)}>
