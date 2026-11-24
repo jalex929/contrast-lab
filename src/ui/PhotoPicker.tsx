@@ -11,6 +11,7 @@ import { criterion, evaluate, formatRatio, type CriterionId } from "../engine/co
 import { boxColors, extractPalette, type ColorShare } from "../engine/palette-extract";
 import { sampleAt, sampleTextPair, type Box, type Pixels } from "../engine/sample";
 import { Chip, type Target } from "./Chip";
+import { action } from "../telemetry";
 
 type Tool = "box" | "point" | "move";
 export type Kind = "text" | "non-text";
@@ -78,7 +79,7 @@ export function PhotoPicker({
 
   // ---------- Loading ----------
 
-  const load = useCallback(async (file: File) => {
+  const load = useCallback(async (file: File, via: "paste" | "drop" | "file") => {
     if (!file.type.startsWith("image/")) {
       setStatus("That file isn't an image. Try a PNG, JPG or WebP.");
       return;
@@ -103,6 +104,7 @@ export function PhotoPicker({
       setZoom(1);
       setPalette([]);
       setStatus("Image ready. Box a word, an icon or a border, or click a color.");
+      action("photo_load", { via, where: "pair" });
       onImageRef.current?.();
       // The palette takes a moment on big photos: let the page paint first.
       setTimeout(() => {
@@ -141,7 +143,7 @@ export function PhotoPicker({
       const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith("image/"));
       if (!file) return;
       e.preventDefault();
-      void load(file);
+      void load(file, "paste");
     };
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
@@ -169,6 +171,7 @@ export function PhotoPicker({
       return;
     }
     onColor(target, hex(c));
+    action("photo_point", { side: target });
     const next: Target = target === "text" ? "background" : "text";
     const name = (t: Target) => (t === "text" ? "foreground" : "background");
     setStatus(`${hex(c)} set as the ${name(target)}. Next click sets the ${name(next)}.`);
@@ -190,6 +193,11 @@ export function PhotoPicker({
       return;
     }
     onPair(hex(pair.text), hex(pair.background));
+    action("photo_box", {
+      kind,
+      busy: pair.backgroundShare < 0.4 || colors.length > 5,
+      colors: colors.length,
+    });
     const ratio = evaluate(pair.text, pair.background).ratio;
     const rule = criterion(kind === "text" ? "aa-text" : "non-text");
     const verdict = ratio >= rule.min ? "passes" : "fails";
@@ -334,6 +342,7 @@ export function PhotoPicker({
     const cx = (el.scrollLeft + el.clientWidth / 2) / el.scrollWidth;
     const cy = (el.scrollTop + el.clientHeight / 2) / el.scrollHeight;
     setZoom(z);
+    action("photo_zoom", { level: z });
     requestAnimationFrame(() => {
       el.scrollLeft = cx * el.scrollWidth - el.clientWidth / 2;
       el.scrollTop = cy * el.scrollHeight - el.clientHeight / 2;
@@ -362,7 +371,10 @@ export function PhotoPicker({
               hex={h}
               label={`${h}, ${Math.round(c.share * 100)}% of the ${where}`}
               defaultTarget={swatchTarget}
-              onPick={onColor}
+              onPick={(t, v) => {
+                action("photo_swatch", { side: t, where });
+                onColor(t, v);
+              }}
               onPreview={() => {}}
             />
           </li>
@@ -395,6 +407,7 @@ export function PhotoPicker({
 
   const sendPalette = () => {
     setOpen(false);
+    action("photo_to_palette", { count: palette.length });
     onPalette?.(palette.map((c) => hex(c.color)));
   };
 
@@ -409,7 +422,7 @@ export function PhotoPicker({
         const file = [...e.dataTransfer.files].find((f) => f.type.startsWith("image/"));
         if (!file) return;
         e.preventDefault();
-        void load(file);
+        void load(file, "drop");
       }}
     >
       <input
@@ -421,7 +434,7 @@ export function PhotoPicker({
         aria-hidden="true"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) void load(f);
+          if (f) void load(f, "file");
           e.target.value = "";
         }}
       />

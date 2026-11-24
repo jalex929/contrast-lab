@@ -169,6 +169,39 @@ groups merge and specks under 1% are dropped. Each swatch can be clicked or drag
 and "Check these as a palette" opens them all in palette mode to see every pair. About 0.4
 seconds on a busy 1600x1000 image, run once after the image loads.
 
+## Fourth pass: formats, lists, an empty palette and usage counts (2026-11-24)
+
+**Values in any format** (Jay's ask: "change the type of color values, if the calculations still
+work"). A "Values as" control converts the fields to HEX, RGB, HSL or OKLCH, and fixes, recent
+and photo colors arrive in that format. The math is unaffected: every format is read into the
+same color first. Each format is written with just enough decimals to read back to the exact
+same 8-bit color (tested for every format on a set of colors), so switching never changes a
+result. The share link always stores hex.
+
+**Comma-separated hex without "#"** (Jay's call). "000052, ffdf3f" works in the paste box and in
+any field. Six- or eight-digit codes count without "#"; three-digit numbers don't, so "100" isn't
+read as a color. Pasting several colors into one palette field splits them into separate
+colors, and two colors pasted into Foreground fill both fields.
+
+**The palette starts empty** (Jay's call: "should not come preloaded"). The empty state offers
+recent colors as one-click additions, a screenshot of an existing palette (Coolors, a Figma
+board, a style guide; its swatches are found the same way as a photo's palette) and a pasted
+list. Rows are compact, with an inline remove that works down to zero.
+
+**Usage counts** (Jay's call: "add instrumentation so I can see how folks use it"). Same setup
+as the other Lab projects: anonymous events to the shared `lab_events` table in the UX
+Portfolio Supabase project, live site only, skipped with Do Not Track or Global Privacy Control,
+a random id per visit and nothing kept between visits. **No colors, images or typed text are
+ever sent**: a pair is summarized as pass or fail per rule and a ratio band (under 3, 3 to 4.5,
+4.5 to 7, 7+). Counted: opens (and where from), mode changes, how each pair turned out, and
+which features get used (fixes, swaps by button, key or bar, recent colors, drags, the
+eyedropper, formats, the photo tools, palette lists and screenshots, copy link). The shared
+receiver only accepts apps on its list, so Contrast Lab's counts start once "contrast-lab" is
+added there and the receiver is redeployed.
+
+**Lab labels for tools** (proposed, approved pending Jay's word). On the Lab page, tools say
+"Ready to use" and "Open", games and toys keep "Playable" and "Play".
+
 ## Left out on purpose
 
 - APCA and other contrast models (see above).

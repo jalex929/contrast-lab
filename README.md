@@ -22,7 +22,8 @@ built the way it is, and who decided what: [DECISIONS.md](DECISIONS.md).
   lightness, as little as possible, and is checked again from its exact hex code. When nothing
   can pass (for example 7:1 on mid grey, where the most possible is 4.68:1) it says why and what
   to change instead.
-- **Check a palette.** Up to 8 colors; a grid of every color as text on every other color, each
+- **Check a palette.** Starts empty: add recent colors, paste a list, or paste a screenshot of
+  an existing palette (Coolors, Figma) to pull its swatches. Up to 8 colors; a grid of every color as text on every other color, each
   cell drawn in its real colors, plus the list of pairs that pass. Any cell opens in the pair
   checker.
 - **Pick from a photo.** Paste, drop or choose an image (it stays on the device). It opens
@@ -34,8 +35,17 @@ built the way it is, and who decided what: [DECISIONS.md](DECISIONS.md).
   recent color to preview it; click to keep. Press X to swap. Drag swatches onto either color.
   Recent colors are kept in the browser. The swatch opens the color picker, and in Chrome and
   Edge the eyedropper picks a color from anywhere on screen.
+- **Any format.** Show and enter values as HEX, RGB, HSL or OKLCH; switching never changes a
+  result. Lists can be comma-separated hex with or without #.
 - **Links.** The address always holds the current check (`#pair=…` or `#palette=…`), so a copied
   link reopens it.
+
+## Usage counts
+
+On the live site only, anonymous counts of which features get used go to the Lab's shared
+receiver (the same one Quick Chess uses). No colors, images, typed text or fingerprints; a
+pair is summarized as pass/fail and a ratio band. Skipped with Do Not Track or Global Privacy
+Control. See `src/telemetry.ts` and DECISIONS.md.
 
 ## How it's built
 
@@ -69,7 +79,7 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
 
 ## Tested
 
-- **62 unit tests** (Vitest): contrast ratios against reference values computed separately in
+- **75 unit tests** (Vitest): contrast ratios against reference values computed separately in
   Python from the WCAG formula; no rounding at thresholds (#777777 on white fails at 4.478,
   #767676 passes at 4.542); transparent text; parsing every supported format and a plain
   message for each kind of mistake; OKLCH round trips; every suggestion re-checked from its hex
@@ -78,7 +88,7 @@ node scripts/share-image.mjs        # rebuilds public/og-image.png from docs/sha
   text on dark, a backwards box); palette extraction (main colors of a noisy image in
   order, the same answer every time, specks dropped, a cap on count) and box colors;
   recent colors.
-- **37 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
+- **45 browser tests** (Playwright, desktop Chrome and Pixel 7 emulation, against the built
   site): no page errors, using a suggestion fixes the pair, typos explain themselves, swap,
   links reopen a check (including a link pasted into the same tab), the palette grid and
   opening a cell, arrow keys on the tabs, nothing wider than the screen, control sizes; the photo

@@ -12,6 +12,7 @@ import { bestPossible, nearestPassing, type Suggestion } from "../engine/suggest
 import { Chip, type Target } from "./Chip";
 import { ColorField } from "./ColorField";
 import { PhotoPicker } from "./PhotoPicker";
+import { action } from "../telemetry";
 
 /** Keeps the last color that could be read, so a half-typed value doesn't blank the page. */
 function useLastGood(text: string, fallback: Rgb): Rgb {
@@ -54,7 +55,7 @@ export function PairView({
   background: string;
   onText: (v: string) => void;
   onBackground: (v: string) => void;
-  onSwap: () => void;
+  onSwap: (how?: "button" | "bar") => void;
   recent: string[];
   /** Open these colors in palette mode. */
   onPalette: (hexes: string[]) => void;
@@ -127,7 +128,7 @@ export function PairView({
           </svg>
           AA body
         </span>
-        <button type="button" className="btn btn--quiet btn--small" onClick={onSwap}>
+        <button type="button" className="btn btn--quiet btn--small" onClick={() => onSwap("bar")}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 4v16M7 4L3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" />
           </svg>
@@ -195,7 +196,12 @@ export function PairView({
           ))}
         </ul>
 
-        <details className="math">
+        <details
+          className="math"
+          onToggle={(e) => {
+            if ((e.target as HTMLDetailsElement).open) action("math_open");
+          }}
+        >
           <summary>Show the math and what each check covers</summary>
           <ol>
             <li>
@@ -240,7 +246,7 @@ export function PairView({
           <button
             type="button"
             className="swap"
-            onClick={onSwap}
+            onClick={() => onSwap("button")}
             title="Swap foreground and background (X)"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -283,7 +289,13 @@ export function PairView({
             <h2 id="fix-heading">Nearest passing colors</h2>
             <label className="aim">
               <span className="visually-hidden">Aim for</span>
-              <select value={target} onChange={(e) => setTarget(e.target.value as CriterionId)}>
+              <select
+                value={target}
+                onChange={(e) => {
+                  setTarget(e.target.value as CriterionId);
+                  action("aim_change", { aim: e.target.value });
+                }}
+              >
                 {TARGETS.map((id) => {
                   const c = criterion(id);
                   return (
@@ -313,7 +325,10 @@ export function PairView({
                     ? `At ${Math.round(fg.a * 100)}% opacity no text color reaches ${goal.min}:1. Raise the opacity or change the background.`
                     : `No text color reaches ${goal.min}:1 here (most possible: ${formatRatio(bestPossible({ ...bg, a: 1 }))}:1). Change the background.`
                 }
-                onPick={pick}
+                onPick={(t, h) => {
+                  action("use_fix", { side: t, aim: target });
+                  pick(t, h);
+                }}
                 onPreview={setPreview}
               />
               <FixGroup
@@ -321,7 +336,10 @@ export function PairView({
                 items={suggestions.background}
                 target="background"
                 empty={`No background reaches ${goal.min}:1 with this text color.`}
-                onPick={pick}
+                onPick={(t, h) => {
+                  action("use_fix", { side: t, aim: target });
+                  pick(t, h);
+                }}
                 onPreview={setPreview}
               />
             </>
@@ -366,7 +384,10 @@ export function PairView({
                       hex={hex}
                       label={`${hex}, recent color`}
                       defaultTarget={recentTarget}
-                      onPick={pick}
+                      onPick={(t, h) => {
+                        action("recent_pick", { side: t });
+                        pick(t, h);
+                      }}
                       onPreview={setPreview}
                     />
                   </li>

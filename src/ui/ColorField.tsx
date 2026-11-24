@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from "react";
 import { isColorDrag, readDroppedColor } from "./Chip";
+import { action as count } from "../telemetry";
 import { parseColor, quantize, toHex, type Rgb } from "../engine/color";
 
 /** Chrome and Edge can pick a color from anywhere on screen; other browsers can't yet. */
@@ -54,6 +55,7 @@ export function ColorField({
     if (!EyeDropperApi) return;
     try {
       const { sRGBHex } = await new EyeDropperApi().open();
+      count("eyedropper");
       // Chrome returns #rrggbb; some versions return rgb(); both parse.
       const p = parseColor(sRGBHex);
       if (p.ok) keepAlpha(toHex(quantize({ ...p.color, a: 1 })));
@@ -77,7 +79,10 @@ export function ColorField({
         e.preventDefault();
         setDropping(false);
         const hex = readDroppedColor(e);
-        if (hex) onChange(hex);
+        if (hex) {
+          count("chip_drop");
+          onChange(hex);
+        }
       }}
     >
       <label className="field__label" htmlFor={id}>

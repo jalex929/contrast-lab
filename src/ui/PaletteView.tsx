@@ -6,6 +6,7 @@ import { MAX_SWATCHES } from "../engine/share";
 import { extractPalette } from "../engine/palette-extract";
 import { ColorField } from "./ColorField";
 import { firstImage, imageToPixels } from "./imagePixels";
+import { action } from "../telemetry";
 
 export interface PaletteEntry {
   id: string;
@@ -50,11 +51,12 @@ export function PaletteView({
       setPasteNote(`A palette holds up to ${MAX_SWATCHES} colors. Remove one first.`);
       return;
     }
+    action("palette_add_recent");
     onChange([...entries, newEntry(inFormat(hex))]);
   };
 
   // A screenshot of a palette (Coolors, a Figma board, a style guide): find its swatches.
-  const fromImage = async (file: File) => {
+  const fromImage = async (file: File, via: "paste" | "drop" | "file") => {
     try {
       const px = await imageToPixels(file, 1600);
       const found = extractPalette(px, { count: MAX_SWATCHES, minShare: 0.004 });
@@ -63,6 +65,7 @@ export function PaletteView({
         return;
       }
       onChange(found.map((c) => newEntry(inFormat(toHex(quantize({ ...c.color, a: 1 }))))));
+      action("palette_from_image", { via, count: found.length });
       setPasteNote(
         `Found ${found.length} colors in the image, most common first. Remove any that are just the page around the swatches.`,
       );
@@ -79,7 +82,7 @@ export function PaletteView({
       const file = firstImage(e.clipboardData?.files);
       if (!file) return;
       e.preventDefault();
-      void fromImageRef.current(file);
+      void fromImageRef.current(file, "paste");
     };
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
@@ -96,6 +99,7 @@ export function PaletteView({
       return;
     }
     const unique = [...new Set(found)];
+    action("palette_paste_list", { count: unique.length });
     onChange(unique.slice(0, MAX_SWATCHES).map((c) => newEntry(inFormat(c))));
     setPasteNote(
       unique.length > MAX_SWATCHES
@@ -120,6 +124,7 @@ export function PaletteView({
     if (many.length >= 2) {
       const at = entries.findIndex((e) => e.id === id);
       const added = many.map((c) => newEntry(inFormat(c)));
+      action("palette_split", { count: many.length });
       const next = [...entries.slice(0, at), ...added, ...entries.slice(at + 1)];
       onChange(next.slice(0, MAX_SWATCHES));
       setPasteNote(
@@ -146,7 +151,7 @@ export function PaletteView({
           const file = firstImage(e.dataTransfer.files);
           if (!file) return;
           e.preventDefault();
-          void fromImage(file);
+          void fromImage(file, "drop");
         }}
       >
         <h2 id="palette-colors" className="section-title">
@@ -220,7 +225,7 @@ export function PaletteView({
             aria-hidden="true"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) void fromImage(f);
+              if (f) void fromImage(f, "file");
               e.target.value = "";
             }}
           />

@@ -8,7 +8,9 @@ import {
   toHex,
   type Format,
 } from "./engine/color";
+import { evaluate } from "./engine/contrast";
 import { pushRecent, readRecent } from "./engine/recent";
+import { action, arrivedFrom, ratioBand, track } from "./telemetry";
 import { decodeShare, encodeShare, type Shared } from "./engine/share";
 import { PairView } from "./ui/PairView";
 import { newEntry, PaletteView, type PaletteEntry } from "./ui/PaletteView";
@@ -20,6 +22,9 @@ const LAB_URL =
     : "https://jayfox.design/lab";
 
 type Mode = "pair" | "palette";
+
+/** Guards the one-per-load open count (React runs startup effects twice in development). */
+let opened = false;
 
 const RECENT_KEY = "contrast-lab:recent";
 const FORMAT_KEY = "contrast-lab:format";
@@ -67,6 +72,7 @@ export function App() {
   const [format, setFormat] = useState<Format>(storedFormat);
 
   const changeFormat = (f: Format) => {
+    action("format_change", { format: f });
     setFormat(f);
     try {
       localStorage.setItem(FORMAT_KEY, f);
@@ -93,10 +99,49 @@ export function App() {
     typeof localStorage === "undefined" ? [] : readRecent(localStorage.getItem(RECENT_KEY)),
   );
 
-  const swap = () => {
+  const swap = (how: "button" | "bar" | "key" = "button") => {
+    action("swap", { how });
     setText(background);
     setBackground(text);
   };
+
+  // Counts: one open per page load, and where the visit came from.
+  useEffect(() => {
+    if (opened) return;
+    opened = true;
+    track("app_open", {
+      from: arrivedFrom(document.referrer),
+      mode: state.mode,
+      linked: decodeShare(location.hash) !== null,
+    });
+    // Once per page load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Counts: how a pair turned out, once it has stayed put for a moment (never the colors).
+  const lastChecked = useRef("");
+  useEffect(() => {
+    if (mode !== "pair") return;
+    const t = parseColor(text);
+    const b = parseColor(background);
+    if (!t.ok || !b.ok) return;
+    const key = `${hexFor(text)}|${hexFor(background)}`;
+    const timer = setTimeout(() => {
+      if (key === lastChecked.current) return;
+      lastChecked.current = key;
+      const e = evaluate(t.color, { ...b.color, a: 1 });
+      const pass = (id: string) => e.checks.find((c) => c.criterion.id === id)!.pass;
+      track("pair_checked", {
+        band: ratioBand(e.ratio),
+        aa_body: pass("aa-text"),
+        aa_large: pass("aa-large"),
+        non_text: pass("non-text"),
+        aaa_body: pass("aaa-text"),
+        transparent: t.color.a < 1,
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [mode, text, background]);
 
   // Colors that stay put for a moment join the recent strip (typing doesn't flood it).
   useEffect(() => {
@@ -126,6 +171,7 @@ export function App() {
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
       e.preventDefault();
+      action("swap", { how: "key" });
       setText(background);
       setBackground(text);
     };
@@ -177,12 +223,19 @@ export function App() {
     try {
       await navigator.clipboard.writeText(location.href);
       setCopied(true);
+      action("copy_link", { mode });
     } catch {
       /* clipboard blocked: the address bar still has the link */
     }
   };
 
+  const switchMode = (m: Mode) => {
+    if (m !== mode) track("mode_change", { mode: m });
+    setMode(m);
+  };
+
   const openPair = (t: string, b: string) => {
+    action("open_cell");
     setText(t);
     setBackground(b);
     setMode("pair");
@@ -198,7 +251,7 @@ export function App() {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
     e.preventDefault();
     const next = (i + (e.key === "ArrowRight" ? 1 : -1) + MODES.length) % MODES.length;
-    setMode(MODES[next]!.id);
+    switchMode(MODES[next]!.id);
     tabs.current[next]?.focus();
   };
 
@@ -234,7 +287,7 @@ export function App() {
               aria-controls="panel"
               tabIndex={mode === m.id ? 0 : -1}
               className="tab"
-              onClick={() => setMode(m.id)}
+              onClick={() => switchMode(m.id)}
               onKeyDown={(e) => onTabKey(e, i)}
             >
               {m.label}
@@ -276,7 +329,7 @@ export function App() {
             recent={recent}
             onPalette={(hexes) => {
               setPalette(hexes.map(newEntry));
-              setMode("palette");
+              switchMode("palette");
             }}
           />
         ) : (
