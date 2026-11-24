@@ -205,48 +205,50 @@ export function PaletteView({
         >
           + Add a color
         </button>
-        {suggestions.length > 0 && (
-          <div className="palette__suggest">
-            <h3 className="fix__title">Recent colors</h3>
-            <ul className="recent" role="list">
-              {suggestions.map((h) => (
-                <li key={h}>
-                  <button
-                    type="button"
-                    className="chip"
-                    style={{ background: h }}
-                    title={`Add ${h}`}
-                    onClick={() => addColor(h)}
-                  >
-                    <span className="visually-hidden">Add {h} to the palette</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+        <div className="palette__sources">
+          {suggestions.length > 0 && (
+            <div className="palette__suggest">
+              <h3 className="fix__title">Recent colors</h3>
+              <ul className="recent" role="list">
+                {suggestions.map((h) => (
+                  <li key={h}>
+                    <button
+                      type="button"
+                      className="chip"
+                      style={{ background: h }}
+                      title={`Add ${h}`}
+                      onClick={() => addColor(h)}
+                    >
+                      <span className="visually-hidden">Add {h} to the palette</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="palette__shot">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="visually-hidden"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void fromImage(f, "file");
+                e.target.value = "";
+              }}
+            />
+            <p>
+              Have the palette somewhere already (Coolors, a Figma board, a style guide)? Paste a
+              screenshot (<kbd>Ctrl</kbd>+<kbd>V</kbd>), drop one here, or{" "}
+              <button type="button" className="link-btn" onClick={() => fileRef.current?.click()}>
+                choose one
+              </button>
+              .
+            </p>
           </div>
-        )}
-        <div className="palette__shot">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="visually-hidden"
-            tabIndex={-1}
-            aria-hidden="true"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void fromImage(f, "file");
-              e.target.value = "";
-            }}
-          />
-          <p>
-            Have the palette somewhere already (Coolors, a Figma board, a style guide)? Paste a
-            screenshot (<kbd>Ctrl</kbd>+<kbd>V</kbd>), drop one here, or{" "}
-            <button type="button" className="link-btn" onClick={() => fileRef.current?.click()}>
-              choose one
-            </button>
-            .
-          </p>
         </div>
         <details className="paste">
           <summary>Paste a list of colors</summary>

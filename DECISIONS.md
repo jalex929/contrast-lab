@@ -263,6 +263,11 @@ panel moves in the page order itself, so keyboard order matches what's on screen
 checks at 700, 820 and 960px that the colors sit right of the preview and in view without
 scrolling.
 
+**Palette colors in columns at medium widths** (Jay's call, 2026-11-24: the hex field went all
+the way across a narrow window). From 640 to 979px the color rows sit two or three to a line at
+their normal width, and recent colors and the screenshot drop sit side by side; phones keep one
+column.
+
 ## Left out on purpose
 
 - APCA and other contrast models (see above).

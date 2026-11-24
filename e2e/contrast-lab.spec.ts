@@ -416,3 +416,16 @@ test("at medium widths the colors sit beside the preview, no scrolling needed", 
     expect(overflow).toBeLessThanOrEqual(0);
   }
 });
+
+test("palette colors sit in columns at medium widths, not one stretched row each", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "a resized desktop window");
+  await page.setViewportSize({ width: 820, height: 900 });
+  await page.goto("./#palette=000052,ffdf3f,ffffff,f0605d");
+  const one = (await page.getByRole("textbox", { name: "Color 1", exact: true }).boundingBox())!;
+  const two = (await page.getByRole("textbox", { name: "Color 2", exact: true }).boundingBox())!;
+  expect(Math.abs(one.y - two.y)).toBeLessThan(2); // side by side
+  expect(one.width).toBeLessThan(220); // a hex-sized field, not the full width
+});

@@ -1786,6 +1786,25 @@ svg {
   align-content: start;
 }
 
+/* Palette inputs on tablets and narrow windows: rows in columns at their normal width, instead of
+   one stretched row per color; recent colors and the screenshot drop side by side. */
+.palette__sources {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 640px) and (max-width: 979px) {
+  .palette__list {
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    column-gap: 16px;
+  }
+
+  .palette__sources {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    align-items: start;
+  }
+}
+
 /* ---------- Footer ---------- */
 
 .foot {
