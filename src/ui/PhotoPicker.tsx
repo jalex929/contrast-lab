@@ -30,8 +30,11 @@ const hex = (c: Rgb) => toHex(quantize({ ...c, a: 1 }));
 export function PhotoPicker({
   onPair,
   onColor,
+  onImage,
 }: {
   onPair: (text: string, background: string) => void;
+  /** Called when an image is loaded (so a closed drawer can open). */
+  onImage?: () => void;
   onColor: (target: Target, hex: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -53,35 +56,39 @@ export function PhotoPicker({
 
   // ---------- Loading ----------
 
-  const load = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setStatus("That file isn't an image. Try a PNG, JPG or WebP.");
-      return;
-    }
-    try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-      const w = Math.max(1, Math.round(bitmap.width * scale));
-      const h = Math.max(1, Math.round(bitmap.height * scale));
-      const canvas = canvasRef.current ?? document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return;
-      ctx.drawImage(bitmap, 0, 0, w, h);
-      bitmap.close();
-      const data = ctx.getImageData(0, 0, w, h);
-      pixels.current = { width: w, height: h, data: data.data };
-      setLoaded({ width: w, height: h, name: file.name || "Pasted image" });
-      setBox(null);
-      setCursor(null);
-      setStatus(
-        "Image ready. Drag a box around some text, or switch to Click a color to pick one color.",
-      );
-    } catch {
-      setStatus("That image couldn't be opened. Try a PNG, JPG or WebP.");
-    }
-  }, []);
+  const load = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        setStatus("That file isn't an image. Try a PNG, JPG or WebP.");
+        return;
+      }
+      try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+        const w = Math.max(1, Math.round(bitmap.width * scale));
+        const h = Math.max(1, Math.round(bitmap.height * scale));
+        const canvas = canvasRef.current ?? document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return;
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        bitmap.close();
+        const data = ctx.getImageData(0, 0, w, h);
+        pixels.current = { width: w, height: h, data: data.data };
+        setLoaded({ width: w, height: h, name: file.name || "Pasted image" });
+        onImage?.();
+        setBox(null);
+        setCursor(null);
+        setStatus(
+          "Image ready. Drag a box around some text, or switch to Click a color to pick one color.",
+        );
+      } catch {
+        setStatus("That image couldn't be opened. Try a PNG, JPG or WebP.");
+      }
+    },
+    [onImage],
+  );
 
   // The canvas only exists once something is loaded: draw again when it appears.
   useEffect(() => {
@@ -304,7 +311,7 @@ export function PhotoPicker({
   return (
     <section
       className="photo"
-      aria-labelledby="photo-heading"
+      aria-label="Pick from a photo"
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -312,10 +319,6 @@ export function PhotoPicker({
         if (file) void load(file);
       }}
     >
-      <h2 id="photo-heading" className="field__label photo__heading">
-        Pick from a photo
-      </h2>
-
       <input
         ref={fileRef}
         type="file"

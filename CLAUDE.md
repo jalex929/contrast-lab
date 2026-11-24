@@ -10,8 +10,9 @@ Read `README.md` and `DECISIONS.md` first.
   values are computed independently (Python) before they go into a test. Never round a ratio
   up; never let a suggestion through without re-checking its hex code.
 - The interface's own colors must pass AA; check any new color pair with the engine.
-- Left-aligned, navy (#000052) / yellow (#FFDF3F) identity; never show pass/fail by color
-  alone (icon + word); every control reachable by keyboard; respect reduced motion.
+- Left-aligned, neutral grey interface so the tested colors are the only color on the page
+  (DECISIONS.md, second pass); never show pass/fail by color alone (icon + word); every control
+  reachable by keyboard; respect reduced motion.
 - READMEs say what was tested and what wasn't. No secrets, no private data.
 - Before pushing: `npm run check`, and `npm run build && npm run test:e2e` when the UI changed.
 - Commits use the GitHub no-reply email, never a personal address.

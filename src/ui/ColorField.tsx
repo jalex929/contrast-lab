@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useId, useState } from "react";
+import { isColorDrag, readDroppedColor } from "./Chip";
 import { parseColor, quantize, toHex, type Rgb } from "../engine/color";
 
 /** Chrome and Edge can pick a color from anywhere on screen; other browsers can't yet. */
@@ -26,6 +27,7 @@ export function ColorField({
   hint?: string;
 }) {
   const id = useId();
+  const [dropping, setDropping] = useState(false);
   const parsed = parseColor(value);
   const color: Rgb | null = parsed.ok ? parsed.color : null;
   const errorId = `${id}-error`;
@@ -55,7 +57,23 @@ export function ColorField({
   };
 
   return (
-    <div className="field">
+    <div
+      className={`field ${dropping ? "field--drop" : ""}`}
+      onDragOver={(e) => {
+        if (!isColorDrag(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        setDropping(true);
+      }}
+      onDragLeave={() => setDropping(false)}
+      onDrop={(e) => {
+        if (!isColorDrag(e)) return;
+        e.preventDefault();
+        setDropping(false);
+        const hex = readDroppedColor(e);
+        if (hex) onChange(hex);
+      }}
+    >
       <label className="field__label" htmlFor={id}>
         {label}
       </label>

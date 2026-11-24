@@ -81,8 +81,9 @@ means. It's the first stretch idea if this grows.
 
 ## Design decisions
 
-**Navy and yellow, left-aligned** (Jay's standing preferences for the Lab): a strict left edge,
-navy (#000052) and yellow (#FFDF3F), Work Sans and Source Code Pro.
+**Left-aligned** (Jay's standing preference): a strict left edge. The first version used the
+Lab's navy (#000052) and yellow (#FFDF3F); the second pass moved to a neutral interface (see
+below).
 
 **Never color alone for pass or fail** (build default, a Lab rule). Every result has an icon
 and the word Pass or Fail; failing rows also get a tinted background.
@@ -93,6 +94,50 @@ interface was run through the engine and passes AA (the lowest is 6.79:1).
 **The palette grid scrolls inside its box on phones** (build default). A wide grid scrolls
 sideways on its own instead of making the whole page wider. A browser test checks nothing on
 the page is wider than the screen.
+
+## Second pass: a live canvas and faster swapping (2026-11-23)
+
+**Pick colors from a photo** (Jay's call). Paste (Ctrl+V), drop or choose a screenshot or photo;
+it never leaves the device. Two tools:
+
+- **Box some text** (Jay's idea: "sample certain text"). Draw a box around words and it finds
+  both colors: the background is the most common color in the box; the text is the color
+  group that stands out most from it, among groups big enough to be real strokes, so the
+  in-between shades of anti-aliased edges don't win. Tested on a synthetic image with an
+  anti-aliased fringe and on a real rendered PNG.
+- **Click a color** with a magnifier. A click averages a 3x3 square (photos are grainy) and
+  alternates text, then background.
+
+Both work from the keyboard: arrows move the picker (Shift for 10px), Enter picks or starts and
+finishes a box, Escape cancels.
+
+**The swatch is the color picker; the eyedropper picks from the screen** (Jay's call: "if you
+click the swatch you should be able to use it"). The old pencil button was clipped and
+duplicated the swatch. Where the browser supports it (Chrome, Edge), the eyedropper button picks
+a color from anywhere on screen; elsewhere it's hidden rather than broken.
+
+**Live canvas layout** (Jay chose it over a denser three-column workbench). Jay flagged too much
+scrolling and wanted swapping colors to be easy. The result now is the preview: one panel painted
+in the two colors carries the ratio, heading, body text, a filled and an outlined button and an
+icon. Compact pass/fail chips sit under it, and the math and what each check covers fold into
+one disclosure. A sticky sidebar holds the colors, the photo picker, the fixes and recent
+colors, so the fix is next to the problem instead of three screens down. On phones a sticky bar
+keeps both colors, the ratio, AA body text and Swap in view.
+
+**Neutral interface, not the Lab's navy and yellow** (Jay: "it does not have to match my
+branding if there is a stronger way"). A grey interface leaves the tested colors as the only
+color on the page; navy buttons around a navy test color were noise. Every interface pair still
+passes AA (the lowest is 4.40:1, a control border that needs 3:1).
+
+**Four ways to try colors fast** (Jay picked all four):
+
+- **Recent colors:** each color that stays put for a moment joins a strip (newest first, up to
+  12, saved in the browser). An "applies to" toggle picks text or background, so it works with a
+  tap on phones; Shift+click uses the other side.
+- **X swaps** text and background, as in Figma and Photoshop, except while typing.
+- **Drag** a recent color or a fix onto either color field.
+- **Hover (or focus) to preview:** the canvas shows the color before you commit, with a
+  "Previewing" badge. Screen readers hear committed changes only, not every preview.
 
 ## Left out on purpose
 

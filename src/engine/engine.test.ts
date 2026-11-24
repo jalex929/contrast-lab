@@ -10,6 +10,7 @@ import {
 } from "./color";
 import { contrastRatio, criterion, evaluate, formatRatio, luminance } from "./contrast";
 import { paletteGrid, passingPairs, type Swatch } from "./palette";
+import { MAX_RECENT, pushRecent, readRecent } from "./recent";
 import { sampleAt, sampleTextPair } from "./sample";
 import { decodeShare, encodeShare } from "./share";
 import { bestPossible, nearestPassing } from "./suggest";
@@ -356,5 +357,24 @@ describe("sampling text from a photo", () => {
   it("has nothing to say about a single flat color", () => {
     const flat = textImage([9, 9, 9], [9, 9, 9], false);
     expect(sampleTextPair(flat, { x: 0, y: 0, width: 40, height: 20 })).toBeNull();
+  });
+});
+
+describe("recent colors", () => {
+  it("puts the newest first, without repeats", () => {
+    expect(pushRecent(["#111111", "#222222"], "#222222")).toEqual(["#222222", "#111111"]);
+    expect(pushRecent([], "#AAAAAA", "#bbbbbb")).toEqual(["#aaaaaa", "#bbbbbb"]);
+  });
+
+  it("keeps at most twelve and skips anything that isn't a hex color", () => {
+    const many = Array.from({ length: 20 }, (_, i) => `#0000${i.toString(16).padStart(2, "0")}`);
+    expect(pushRecent([], ...many)).toHaveLength(MAX_RECENT);
+    expect(pushRecent(["#111111"], "rgb(0 0 0)", "#12")).toEqual(["#111111"]);
+  });
+
+  it("reads a stored list safely", () => {
+    expect(readRecent('["#111111","nope",3]')).toEqual(["#111111"]);
+    expect(readRecent("not json")).toEqual([]);
+    expect(readRecent(null)).toEqual([]);
   });
 });

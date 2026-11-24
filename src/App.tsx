@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { parseColor, quantize, toHex } from "./engine/color";
+import { pushRecent, readRecent } from "./engine/recent";
 import { decodeShare, encodeShare, type Shared } from "./engine/share";
 import { PairView } from "./ui/PairView";
 import { newEntry, PaletteView, type PaletteEntry } from "./ui/PaletteView";
@@ -11,6 +12,8 @@ const LAB_URL =
     : "https://jayfox.design/lab";
 
 type Mode = "pair" | "palette";
+
+const RECENT_KEY = "contrast-lab:recent";
 
 const DEFAULT_PAIR = { text: "#777777", background: "#ffffff" };
 const DEFAULT_PALETTE = ["#000052", "#ffdf3f", "#ffffff", "#6b6b8f"];
@@ -37,6 +40,49 @@ export function App() {
   const [background, setBackground] = useState(state.background);
   const [palette, setPalette] = useState<PaletteEntry[]>(state.palette);
   const [copied, setCopied] = useState(false);
+  const [recent, setRecent] = useState<string[]>(() =>
+    typeof localStorage === "undefined" ? [] : readRecent(localStorage.getItem(RECENT_KEY)),
+  );
+
+  const swap = () => {
+    setText(background);
+    setBackground(text);
+  };
+
+  // Colors that stay put for a moment join the recent strip (typing doesn't flood it).
+  useEffect(() => {
+    if (mode !== "pair") return;
+    const t = hexFor(text);
+    const b = hexFor(background);
+    if (!t || !b) return;
+    const timer = setTimeout(() => {
+      setRecent((list) => {
+        const next = pushRecent(list, t, b);
+        try {
+          localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+        } catch {
+          /* storage off: the strip still works for this visit */
+        }
+        return next;
+      });
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [mode, text, background]);
+
+  // X swaps text and background (as in Figma and Photoshop), unless you're typing.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "x" && e.key !== "X") return;
+      if (e.ctrlKey || e.metaKey || e.altKey || mode !== "pair") return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      e.preventDefault();
+      setText(background);
+      setBackground(text);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode, text, background]);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Keep the address in step with what's on screen, so the link is always the current check.
@@ -119,8 +165,7 @@ export function App() {
         <div className="top__title">
           <h1>Contrast Lab</h1>
           <p className="top__tagline">
-            Check colors against the WCAG contrast rules, see the math, and get the nearest colors
-            that pass instead of just a fail.
+            WCAG contrast with the math, and the nearest colors that pass instead of just a fail.
           </p>
         </div>
       </header>
@@ -165,6 +210,8 @@ export function App() {
             background={background}
             onText={setText}
             onBackground={setBackground}
+            onSwap={swap}
+            recent={recent}
           />
         ) : (
           <PaletteView entries={palette} onChange={setPalette} onCheckPair={openPair} />
